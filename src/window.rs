@@ -26,7 +26,10 @@ pub fn configure_background(window: &Window, cx: &mut gpui::App) {
             window.set_background_appearance(WindowBackgroundAppearance::Transparent);
             true
         }
-        Backdrop::Auto => {
+        // Windows 10 ACCENT_ENABLE_ACRYLICBLURBEHIND can stall native move/size.
+        // Keep it explicit rather than enabling it on every launch.
+        Backdrop::Auto => false,
+        Backdrop::Acrylic => {
             window.set_background_appearance(WindowBackgroundAppearance::Transparent);
             try_acrylic(window)
         }

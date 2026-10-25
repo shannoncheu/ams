@@ -774,8 +774,8 @@ impl gpui::Render for Sidebar {
         theme::frosted()
             .appearance(FrostedGlassAppearance {
                 blur_radius: px(20.),
-                tint: rgba(0x17102f90).into(),
-                edge: rgba(0x7656d48f).into(),
+                tint: rgba(0x20252bdc).into(),
+                edge: rgba(0x91c8d520).into(),
                 ..theme::frosted_appearance()
             })
             .rounded(px(25.))

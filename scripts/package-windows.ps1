@@ -63,6 +63,11 @@ foreach ($dll in $runtimeDlls) { Copy-Item (Join-Path $bundle $dll) (Join-Path $
     fontsEmbedded = @('Noto Sans SC variable, OFL-1.1'); iconsEmbedded = $true;
     win10PhysicalTested = $false; buildOS = [Environment]::OSVersion.VersionString
 } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 "$dist/runtime-dependencies.json"
+$iscc = "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe"
+if (-not (Test-Path $iscc)) { throw 'Inno Setup 6 missing' }
+& $iscc scripts/installer.iss
+if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+Copy-Item "$dist/GPUI-Music-Player-Portable-x64.zip" "$dist/MusicPlayer-Portable-x64.zip"
 Get-ChildItem $dist -File | Where-Object { $_.Extension -in '.exe', '.dll', '.zip' } |
     ForEach-Object { $hash = Get-FileHash -Algorithm SHA256 $_.FullName; "$($hash.Hash.ToLowerInvariant())  $($_.Name)" } |
     Set-Content -Encoding ascii "$dist/SHA256SUMS.txt"

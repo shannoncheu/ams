@@ -426,19 +426,26 @@ pub fn render(
                 )
                 .when(!compact, |this| {
                     this.child(
-                        icon_button(
-                            "volume",
-                            if muted {
-                                GpuiIcons::LucideVolumeX
-                            } else {
-                                GpuiIcons::LucideVolume2
-                            },
-                            true,
-                        )
-                        .on_click(cx.listener(|app, _, _, cx| {
-                            app.playback
-                                .update(cx, |playback, cx| playback.toggle_muted(cx));
-                        })),
+                        div()
+                            .relative()
+                            .child(
+                                icon_button(
+                                    "volume",
+                                    if muted {
+                                        GpuiIcons::LucideVolumeX
+                                    } else {
+                                        GpuiIcons::LucideVolume2
+                                    },
+                                    true,
+                                )
+                                .on_click(cx.listener(
+                                    |app, _, _, cx| {
+                                        app.volume_open = !app.volume_open;
+                                        cx.notify();
+                                    },
+                                )),
+                            )
+                            .when(app.volume_open, |popup| popup.child(volume_popup(app))),
                     )
                 }),
         )
@@ -605,13 +612,13 @@ pub fn render_now_playing(
                                 } else {
                                     GpuiIcons::LucideVolume2.into()
                                 },
-                                "Mute or adjust volume",
+                                "Adjust volume",
                                 true,
                                 false,
                             )
                             .on_click(cx.listener(|app, _, _, cx| {
-                                app.playback
-                                    .update(cx, |player, cx| player.toggle_muted(cx));
+                                app.volume_open = !app.volume_open;
+                                cx.notify();
                             })),
                         )
                         .child(
@@ -623,8 +630,7 @@ pub fn render_now_playing(
                                 .p(px(8. * scale))
                                 .rounded(px(6. * scale))
                                 .bg(rgba(0x303840fa))
-                                .invisible()
-                                .group_hover("reference-volume", |popup| popup.visible())
+                                .when(!app.volume_open, |popup| popup.invisible())
                                 .child(
                                     Slider::new(&app.volume_slider)
                                         .label("Volume")
@@ -749,4 +755,28 @@ pub fn now_playing_icon_button(
         } else {
             rgba(0xffffff70)
         }))
+}
+
+fn volume_popup(app: &MusicShell) -> impl IntoElement {
+    div()
+        .absolute()
+        .bottom_full()
+        .right_0()
+        .w(px(150.))
+        .p(px(12.))
+        .rounded(px(10.))
+        .bg(rgba(0x303840ff))
+        .child(Slider::new(&app.volume_slider).label("Volume").h(px(24.)))
+        .child(
+            div()
+                .id("volume-mute")
+                .cursor_pointer()
+                .child("Mute / unmute")
+                .on_click({
+                    let playback = app.playback.clone();
+                    move |_, _, cx| {
+                        playback.update(cx, |player, cx| player.toggle_muted(cx));
+                    }
+                }),
+        )
 }

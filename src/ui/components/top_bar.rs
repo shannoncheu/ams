@@ -5,7 +5,6 @@ use uic::components::input::Input;
 use crate::{
     app::music_shell::MusicShell,
     domain::{Page, PlayList},
-    state::imports,
     ui::{strings, theme},
 };
 
@@ -171,42 +170,18 @@ pub fn render(
             page != Page::Search && page != Page::Songs && !custom_playlist,
             |top_bar| {
                 let title = page_title(&page);
-                top_bar
-                    .child(
-                        super::window_controls::drag_region()
-                            .h_full()
-                            .flex_1()
-                            .flex()
-                            .items_center()
-                            .window_control_area(WindowControlArea::Drag)
-                            .text_size(px(18.))
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(rgba(0xf2f0f6ed))
-                            .child(title),
-                    )
-                    .when(page == Page::Home, |top_bar| {
-                        top_bar.child(
-                            div()
-                                .id("home-add-music")
-                                .size(px(32.))
-                                .flex_none()
-                                .rounded_full()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .cursor_pointer()
-                                .hover(|button| button.bg(rgba(0xffffff12)))
-                                .on_click(cx.listener(|app, _, window, cx| {
-                                    imports::show_picker(app.imports.clone(), window, cx);
-                                }))
-                                .child(
-                                    svg()
-                                        .path(GpuiIcons::LucideCloudUpload)
-                                        .size(px(18.))
-                                        .text_color(rgba(0xe8e6eed4)),
-                                ),
-                        )
-                    })
+                top_bar.child(
+                    super::window_controls::drag_region()
+                        .h_full()
+                        .flex_1()
+                        .flex()
+                        .items_center()
+                        .window_control_area(WindowControlArea::Drag)
+                        .text_size(px(18.))
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(rgba(0xf2f0f6ed))
+                        .child(title),
+                )
             },
         )
 }

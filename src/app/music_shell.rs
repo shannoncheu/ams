@@ -11,7 +11,7 @@ use std::{
 
 use gpui::{
     AnyWindowHandle, AppContext, Entity, EventEmitter, Image, Render, Task, Window, div,
-    prelude::*, px, rgb, rgba,
+    prelude::*, px, rgb,
 };
 use serde::{Deserialize, Serialize};
 use uic::components::{
@@ -120,6 +120,7 @@ pub struct MusicShell {
     pub imports: Entity<ImportManager>,
     pub(crate) timeline_slider: Entity<SliderState>,
     pub(crate) volume_slider: Entity<SliderState>,
+    pub(crate) volume_open: bool,
     pub search_input: Entity<TextInput>,
     pub songs_search_input: Entity<TextInput>,
     pub playlist_search_input: Entity<TextInput>,
@@ -351,6 +352,7 @@ impl MusicShell {
             imports,
             timeline_slider,
             volume_slider,
+            volume_open: false,
             now_playing: true,
             mini_window: None,
             queue_artwork: HashMap::new(),
@@ -383,6 +385,17 @@ impl MusicShell {
     ) {
         self.playback
             .update(cx, |playback, cx| playback.play_track(track, cx));
+        cx.notify();
+    }
+
+    pub fn return_to_library(&mut self, cx: &mut gpui::Context<Self>) {
+        self.now_playing = false;
+        self.playback_panel = PlaybackPanel::None;
+        self.navigation.page = Page::Home;
+        self.sidebar
+            .update(cx, |sidebar, cx| sidebar.set_selected_page(Page::Home, cx));
+        self.content_shell
+            .update(cx, |shell, cx| shell.select_page(Page::Home, cx));
         cx.notify();
     }
 
@@ -527,13 +540,6 @@ impl Render for MusicShell {
                 root.rounded(px(22.))
             })
             .bg(rgb(0x20252b))
-            .border_1()
-            .border_color(rgba(0x00000045))
-            .shadow(vec![
-                gpui::BoxShadow::new(px(0.), px(11.), rgba(0x00000042).into())
-                    .blur_radius(px(28.))
-                    .spread_radius(px(-7.)),
-            ])
             .child(
                 div()
                     .m(px(8.))

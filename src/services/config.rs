@@ -30,6 +30,7 @@ pub enum Backdrop {
     Auto,
     Opaque,
     Transparent,
+    Acrylic,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]

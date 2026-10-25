@@ -337,8 +337,7 @@ fn render_window_controls(
                     top_icon_button("open-library", GpuiIcons::LucideLibrary)
                         .aria_label("Open music library")
                         .on_click(cx.listener(|app, _, _, cx| {
-                            app.now_playing = false;
-                            cx.notify();
+                            app.return_to_library(cx);
                         })),
                 )
                 .child(
