@@ -25,10 +25,10 @@ local playback does not depend on it. Windows CI tests helper open/close/cancel,
 not a real Google account. Successful credential storage is not proof that the
 server accepted a catalog request.
 
-Home/library/likes/history use unofficial authenticated browse requests. Requests
+Search/home/library/likes/history use unofficial authenticated browse requests. Requests
 run off the GPUI thread, have timeouts, bounded displayed rows and generic errors
 that omit response bodies/credentials. Expired/refused sessions require login
-again. The current UI renders returned text metadata only: no cover grid, search,
+again. The current UI renders returned text metadata only: no cover grid,
 playlist mutations, complete pagination, or online audio playback is implemented.
 No real account has verified these endpoints. Do not claim private library access
 or login success until an actual account test passes.
@@ -57,3 +57,5 @@ References:
 
 There is no general official native YouTube Music audio API for this CPAL player.
 No DRM bypass, stream extraction or subscription impersonation is implemented.
+
+The GPUI page also offers an explicit system-browser link to the official YouTube Music player as the supported listening alternative. This does not start native app audio playback.

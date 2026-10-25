@@ -169,7 +169,11 @@ pub fn render(
         .when(
             page != Page::Search && page != Page::Songs && !custom_playlist,
             |top_bar| {
-                let title = page_title(&page);
+                let title = if app.youtube_visible {
+                    SharedString::from("YouTube Music")
+                } else {
+                    page_title(&page)
+                };
                 top_bar.child(
                     super::window_controls::drag_region()
                         .h_full()

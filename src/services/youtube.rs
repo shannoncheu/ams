@@ -114,6 +114,12 @@ mod windows {
         }
         browse(&cookie, action)
     }
+    fn secret_header(value: &str) -> Result<reqwest::header::HeaderValue, &'static str> {
+        let mut header = reqwest::header::HeaderValue::from_str(value)
+            .map_err(|_| "Saved session is invalid.")?;
+        header.set_sensitive(true);
+        Ok(header)
+    }
     fn browse(cookie: &str, page: &str) -> Result<Vec<String>, &'static str> {
         let http = reqwest::blocking::Client::builder()
             .timeout(std::time::Duration::from_secs(25))
@@ -121,7 +127,7 @@ mod windows {
             .map_err(|_| "Network client unavailable.")?;
         let html = http
             .get("https://music.youtube.com/")
-            .header("Cookie", cookie)
+            .header("Cookie", secret_header(cookie)?)
             .send()
             .and_then(|r| r.error_for_status())
             .and_then(|r| r.text())
@@ -150,11 +156,29 @@ mod windows {
             "history" => "FEmusic_history",
             _ => "FEmusic_library_landing",
         };
-        let response = http.post("https://music.youtube.com/youtubei/v1/browse")
-            .header("Cookie", cookie).header("Origin", "https://music.youtube.com")
-            .header("Authorization", format!("SAPISIDHASH {time}_{hash}"))
-            .json(&json!({"context":{"client":{"clientName":"WEB_REMIX","clientVersion":version}},"browseId":id}))
-            .send().map_err(|_| "YouTube request failed. Retry later.")?;
+        let mut payload =
+            json!({"context":{"client":{"clientName":"WEB_REMIX","clientVersion":version}}});
+        let endpoint = if let Some(query) = page.strip_prefix("search:") {
+            if query.trim().is_empty() || query.len() > 1024 {
+                return Err("Enter a search query of up to 1024 bytes.");
+            }
+            payload["query"] = json!(query.trim());
+            "search"
+        } else {
+            payload["browseId"] = json!(id);
+            "browse"
+        };
+        let response = http
+            .post(format!("https://music.youtube.com/youtubei/v1/{endpoint}"))
+            .header("Cookie", secret_header(cookie)?)
+            .header("Origin", "https://music.youtube.com")
+            .header(
+                "Authorization",
+                secret_header(&format!("SAPISIDHASH {time}_{hash}"))?,
+            )
+            .json(&payload)
+            .send()
+            .map_err(|_| "YouTube request failed. Retry later.")?;
         if matches!(response.status().as_u16(), 401 | 403) {
             return Err("Session expired or access was refused. Sign in again.");
         }

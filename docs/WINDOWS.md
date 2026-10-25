@@ -8,8 +8,8 @@ Linux checks do not validate Windows behavior.
 
 Install Git, Rust through rustup, and Visual Studio 2022 Build Tools. In the
 Visual Studio Installer, select **Desktop development with C++**, the MSVC v143
-x64/x86 tools, and **Windows 10 SDK** (including `fxc.exe`). No WebView or web
-framework is required. Avoid selecting unrelated workloads.
+x64/x86 tools, and **Windows 10 SDK** (including `fxc.exe`). Local playback needs no web runtime. The experimental Google login window needs
+Microsoft Edge WebView2 Runtime. Avoid selecting unrelated workloads.
 
 If using winget, Git and rustup can be installed with:
 

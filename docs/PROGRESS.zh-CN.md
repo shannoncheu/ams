@@ -38,6 +38,10 @@ Windows Server 构建或启动成功也不等于 Windows 10 兼容性通过。�
 
 Linux 虚拟音频曾成功录到非零 PCM，但复测间歇出现 ALSA/Pulse I/O 错误；原因未定，音频稳定性未验收。
 
-YouTube Music 仅有来源接口和边界设计，Google 登录、在线元数据、远端歌单及原生播放均未接通。迷你展开/收起动画、可切换置顶、完整背景模式及大型媒体库索引仍待完善。发布为无签名预览，不作为正式稳定版。
+YouTube Music 已新增 Windows 独立 WebView2 登录子进程、凭据管理器会话存储与 GPUI 页面，使用非官方接口请求搜索及首页/音乐库/收藏/历史的文本元数据。尚无真实 Google 账号验证，歌单修改、封面卡片和原生在线播放均未接通。迷你展开/收起动画、可切换置顶、完整背景模式及大型媒体库索引仍待完善。发布为无签名预览，不作为正式稳定版。
 
 首轮 CI 启动工作集峰值为 172,625,920 字节（约 164.6 MiB），不是本地播放常驻内存；CPU/GPU 尚未测量。导入表包含系统 icuuc.dll，因此保守要求 Windows 10 1903 或更新版本（建议 22H2），旧版本不在当前支持声明内。
+
+新增登录架构的首轮 Windows 原生检查、测试、Release、安装/卸载、Portable 启动与 WebView2 窗口创建/取消/清理已通过：[运行记录](https://github.com/shannoncheu/ams/actions/runs/40173637918)。登录窗退出码 2，realAccountTested=false。启动工作集峰值 175,292,416 字节（约 167.2 MiB），仅是 Server 2022 启动遥测。
+
+补充 Linux PCM 音量振幅测试未通过：虚拟 ALSA/Pulse 输出出现 snd_pcm_avail_delay I/O error，未捕获有效样本。因此不将音量实际声音效果或音频稳定性记为验收通过。

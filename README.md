@@ -3,7 +3,8 @@
 Rust + native GPUI music player targeting **Windows 10 x64**, adapted from
 [cradiy/gpui-apple-music-demo](https://github.com/cradiy/gpui-apple-music-demo)
 with its pinned [GPUI Fusion](https://github.com/cradiy/gpui-fusion) backend.
-No Electron, Tauri, WebView, or web frontend.
+The player UI stays native GPUI. Only Google sign-in uses a separate Windows
+WebView2 window; the player does not use Electron, Tauri or a web frontend.
 
 ![Main player](docs/images/player-preview.png)
 ![Mini player](docs/images/mini-preview.png)
@@ -35,10 +36,9 @@ before treating them as Windows screenshots.
 YouTube Music has an experimental Windows-only WebView2 login helper. The main
 UI remains GPUI. Temporary browser profiles are removed after login/cancel;
 session cookies are stored only in Windows Credential Manager. No passwords are
-collected by the player. The sidebar includes login, logout, home/library/likes/
+collected by the player. The sidebar includes login, logout, search/home/library/likes/
 history requests through unofficial endpoints; these may change or be refused.
-**No real Google account has validated login or private library access.** Search,
-artwork cards, playlist editing and native online audio remain unavailable.
+**No real Google account has validated login or private library access.** Artwork cards, playlist editing and native online audio remain unavailable.
 Google may reject embedded sign-in; no user-agent disguise or bypass is used.
 Install Microsoft Edge WebView2 Runtime to use the login helper.
 See [provider boundaries and license review](docs/PROVIDERS.md).

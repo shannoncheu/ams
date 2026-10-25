@@ -217,7 +217,7 @@ pub fn remove_frame(window: &Window) {
             log::debug!("Native DWM border preference unavailable: {border_result:#x}");
         }
 
-        // The player also clips its GPUI content to rounded corners on Windows 10.
+        // Windows 10 may fall back to square native corners; do not mask the frame with a region.
         // This optional DWM preference is supported on newer Windows versions.
         let corner_preference = DWMWCP_ROUND;
         let corner_result = DwmSetWindowAttribute(

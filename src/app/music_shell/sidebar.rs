@@ -823,6 +823,7 @@ impl gpui::Render for Sidebar {
                             .id("nav-youtube")
                             .role(gpui::Role::Button)
                             .aria_label("YouTube Music")
+                            .text_color(rgba(0xf2f4f7ff))
                             .mx(px(8.))
                             .p(px(12.))
                             .rounded(px(12.))

@@ -122,6 +122,8 @@ pub struct MusicShell {
     pub(crate) volume_slider: Entity<SliderState>,
     pub(crate) volume_open: bool,
     pub(crate) youtube_visible: bool,
+    pub(crate) youtube_search_input: Entity<TextInput>,
+    youtube_query: String,
     pub(crate) youtube: crate::services::youtube::YoutubeState,
     pub search_input: Entity<TextInput>,
     pub songs_search_input: Entity<TextInput>,
@@ -150,6 +152,13 @@ impl EventEmitter<MusicEvent> for MusicShell {}
 
 impl MusicShell {
     pub fn new(cx: &mut gpui::Context<Self>, _window: &mut Window) -> Self {
+        let youtube_search_input =
+            cx.new(|cx| TextInput::new(cx).placeholder("搜索歌曲、歌手或专辑"));
+        cx.subscribe(&youtube_search_input, |app, _, event: &InputEvent, cx| {
+            app.youtube_query = event.text().to_string();
+            cx.notify();
+        })
+        .detach();
         let search_input = cx.new(|cx| TextInput::new(cx).placeholder(strings::search_music()));
         cx.subscribe(&search_input, |app, _, event: &InputEvent, cx| {
             app.navigation.search_query = event.text().clone();
@@ -362,6 +371,8 @@ impl MusicShell {
             volume_slider,
             volume_open: false,
             youtube_visible: false,
+            youtube_search_input,
+            youtube_query: String::new(),
             youtube: Default::default(),
             now_playing: true,
             mini_window: None,
@@ -402,13 +413,18 @@ impl MusicShell {
         if self.youtube.busy {
             return;
         }
+        let request_action = if action == "search" {
+            format!("search:{}", self.youtube_query)
+        } else {
+            action.to_owned()
+        };
         self.youtube.busy = true;
         self.youtube.message = "正在处理…".into();
         cx.notify();
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
-                .spawn(async move { crate::services::youtube::perform(action) })
+                .spawn(async move { crate::services::youtube::perform(&request_action) })
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.youtube.busy = false;
@@ -435,6 +451,7 @@ impl MusicShell {
 
     pub fn return_to_library(&mut self, cx: &mut gpui::Context<Self>) {
         self.now_playing = false;
+        self.youtube_visible = false;
         self.playback_panel = PlaybackPanel::None;
         self.navigation.page = Page::Home;
         self.sidebar
