@@ -22,7 +22,8 @@ before treating them as Windows screenshots.
   double-click remain delegated to GPUI/Win32.
 - Bundled Noto Sans SC variable font (SIL OFL 1.1). Title Medium, artist Regular,
   current lyric Semibold, surrounding lyrics Regular; no font installation.
-- Win10 Acrylic is optional and dynamically detected. Older builds, RDP,
+- Default background uses an opaque slate fallback for responsive Win10 window movement.
+  Acrylic requires `[appearance] backdrop = "acrylic"` and is dynamically detected. Older builds, RDP,
   disabled transparency or unavailable APIs fall back to an opaque slate panel.
   Set `[appearance] backdrop = "opaque"` to force the fallback.
 - Queue artwork uses 96px thumbnails, a viewport working set capped at 64 covers,
@@ -112,3 +113,10 @@ track. No PixelPlayer source or assets are redistributed. Original upstream
 documentation is preserved in [UPSTREAM_README.md](docs/UPSTREAM_README.md).
 
 Windows 10 baseline: 1903 or newer (22H2 recommended), x64. The executable imports the system ICU library; earlier Windows 10 builds are not supported by this preview. Physical-machine validation remains pending.
+
+Recent repairs add a click-open volume slider, restore Home when leaving the lyric
+player, remove the duplicate upload action, and unify the sidebar palette. Windows
+packages now include a per-user Inno Setup installer with shortcuts/uninstall.
+Native restored-window frame removal preserves GPUI hit testing and maximized
+work-area handling. Windows 10 frame, corner and movement behavior remain unverified
+on physical hardware; Windows 10 may use square native corners as a fallback.

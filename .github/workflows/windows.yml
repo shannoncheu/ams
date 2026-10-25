@@ -70,6 +70,16 @@ jobs:
       - name: Package EXE and Portable ZIP
         shell: pwsh
         run: ./scripts/package-windows.ps1
+      - name: Test per-user installation and uninstall
+        shell: pwsh
+        run: |
+          $install = Join-Path $env:RUNNER_TEMP 'ams-install-check'
+          $setup = Start-Process ./dist/MusicPlayer-Setup-x64.exe -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$install") -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "Install failed: $($setup.ExitCode)" }
+          if (-not (Test-Path "$install/GPUI-Music-Player.exe")) { throw 'Installed EXE missing' }
+          if (Test-Path "$install/portable.flag") { throw 'Installed mode must not be portable' }
+          $remove = Start-Process "$install/unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+          if ($remove.ExitCode -ne 0) { throw 'Uninstall failed' }
       - name: Test extracted Portable from an unrelated working directory
         shell: pwsh
         run: ./scripts/smoke-windows.ps1
