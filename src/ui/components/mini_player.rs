@@ -62,14 +62,16 @@ impl Default for MiniLyricMarquee {
 
 impl MiniPlayer {
     fn restore(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.music.update(cx, |music, _| {
+        self.music.update(cx, |music, cx| {
             music.mini_window = None;
+            cx.notify();
         });
         let _ = self.main.update(cx, |_, window, _| {
             if let Err(error) = window.set_mapped(true) {
                 log::error!("unable to show the main window: {error:#}");
             }
             window.activate_window();
+            window.refresh();
         });
         window.remove_window();
     }
@@ -657,13 +659,17 @@ pub fn open(
                     let music = music_for_close.clone();
                     cx.defer(move |cx| {
                         if let Some(music) = music.upgrade() {
-                            music.update(cx, |music, _| music.mini_window = None);
+                            music.update(cx, |music, cx| {
+                                music.mini_window = None;
+                                cx.notify();
+                            });
                         }
                         let _ = main.update(cx, |_, window, _| {
                             if let Err(error) = window.set_mapped(true) {
                                 log::error!("unable to show the main window: {error:#}");
                             }
                             window.activate_window();
+                            window.refresh();
                         });
                     });
                     true
