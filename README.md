@@ -102,7 +102,10 @@ This project retains the upstream [MIT license](LICENSE), copyright and history.
 GPUI Fusion includes MIT and Apache-2.0 packages with Zed-derived attribution;
 Lucide icons retain ISC/Feather notices. The bundled font's [OFL](assets/fonts/OFL.txt)
 and [source/hash](assets/fonts/SOURCE.md) ship with each package. CI collects locked
-dependency notices in `THIRD_PARTY_NOTICES.txt` and a license inventory.
+dependency notices in `THIRD_PARTY_NOTICES.txt` and a license inventory. Unchanged
+MPL-covered dependency source (including Symphonia) is bundled in
+`licenses/THIRD_PARTY_SOURCES.zip`; missing notice files are resolved from the
+published VCS commit or [version-specific source clarifications](licenses/CLARIFICATIONS.md); unresolved notices stop packaging.
 
 PixelPlayer is only a visual inspiration for the independently written sine-wave
 track. No PixelPlayer source or assets are redistributed. Original upstream

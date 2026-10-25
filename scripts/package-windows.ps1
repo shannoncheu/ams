@@ -49,6 +49,7 @@ Copy-Item dist/THIRD_PARTY_NOTICES.txt $bundle
 New-Item -ItemType Directory (Join-Path $bundle 'licenses') | Out-Null
 Copy-Item assets/fonts/OFL.txt (Join-Path $bundle 'licenses/NotoSansSC-OFL.txt')
 Copy-Item assets/fonts/SOURCE.md (Join-Path $bundle 'licenses/NotoSansSC-SOURCE.md')
+Copy-Item dist/THIRD_PARTY_SOURCES.zip (Join-Path $bundle 'licenses/THIRD_PARTY_SOURCES.zip')
 # A conventional EXE bundle stores data in the normal per-user application dirs.
 Compress-Archive -Path "$bundle/*" -DestinationPath "$dist/GPUI-Music-Player-Windows-x64.zip" -Force
 # Fonts, SVG icons and compiled shaders are inside the EXE; data is created on first run.

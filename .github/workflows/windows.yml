@@ -81,6 +81,9 @@ jobs:
             dist/*.dll
             dist/*.zip
             dist/SHA256SUMS.txt
+            dist/THIRD_PARTY_NOTICES.txt
+            dist/runtime-dependencies.json
+            dist/windows-smoke.json
           if-no-files-found: error
 
   publish:

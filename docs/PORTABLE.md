@@ -20,6 +20,7 @@ data/
   cache/artwork/
   cache/playlist-covers/
 licenses/
+  THIRD_PARTY_SOURCES.zip
 THIRD_PARTY_NOTICES.txt
 ```
 
