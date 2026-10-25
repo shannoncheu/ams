@@ -176,6 +176,24 @@ pub fn remove_frame(window: &Window) {
     };
 
     unsafe {
+        use windows_sys::Win32::UI::{
+            Shell::SetWindowSubclass,
+            WindowsAndMessaging::{
+                SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+                SetWindowPos,
+            },
+        };
+        if SetWindowSubclass(hwnd, Some(frameless_subclass), 0x414d53, 0) != 0 {
+            SetWindowPos(
+                hwnd,
+                core::ptr::null_mut(),
+                0,
+                0,
+                0,
+                0,
+                SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+            );
+        }
         // Optional dark non-client border on supporting Windows 10 builds.
         // Preserve all native sizing/caption styles and never make the window topmost.
         let dark = 1_i32;
@@ -216,3 +234,30 @@ pub fn remove_frame(window: &Window) {
 
 #[cfg(not(target_os = "windows"))]
 pub fn remove_frame(_: &Window) {}
+
+// Remove the residual native resize-frame pixels without removing sizing styles.
+// GPUI still handles hit testing; maximized NCCALCSIZE stays with GPUI so that
+// monitor work-area and taskbar calculations are preserved.
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn frameless_subclass(
+    hwnd: windows_sys::Win32::Foundation::HWND,
+    message: u32,
+    wparam: usize,
+    lparam: isize,
+    id: usize,
+    _: usize,
+) -> isize {
+    use windows_sys::Win32::UI::{
+        Shell::{DefSubclassProc, RemoveWindowSubclass},
+        WindowsAndMessaging::{IsZoomed, WM_NCCALCSIZE, WM_NCDESTROY},
+    };
+    unsafe {
+        if message == WM_NCCALCSIZE && wparam != 0 && IsZoomed(hwnd) == 0 {
+            return 0;
+        }
+        if message == WM_NCDESTROY {
+            RemoveWindowSubclass(hwnd, Some(frameless_subclass), id);
+        }
+        DefSubclassProc(hwnd, message, wparam, lparam)
+    }
+}
