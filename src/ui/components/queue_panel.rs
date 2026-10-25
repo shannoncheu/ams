@@ -62,6 +62,7 @@ pub struct QueueUiState {
     drag_key: Option<u64>,
     cursor_offset_y: f32,
     last_frame: Instant,
+    scroll: gpui::ScrollHandle,
     list_origin_y: Rc<Cell<f32>>,
 }
 
@@ -72,6 +73,7 @@ impl Default for QueueUiState {
             drag_key: None,
             cursor_offset_y: 0.0,
             last_frame: Instant::now(),
+            scroll: gpui::ScrollHandle::new(),
             list_origin_y: Rc::new(Cell::new(0.0)),
         }
     }
@@ -253,7 +255,7 @@ fn render_panel(
         .when(fullscreen, |panel| panel.w_full())
         .when(!fullscreen, |panel| {
             panel
-                .bg(gpui::rgb(0x2c2d32))
+                .bg(gpui::rgb(0x303840))
                 .border_l_1()
                 .border_color(rgba(0xffffff10))
         })
@@ -330,6 +332,7 @@ fn render_panel(
         .child(
             div()
                 .id("play-queue-scroll")
+                .track_scroll(&app.queue_ui.scroll)
                 .flex_1()
                 .min_h_0()
                 .px(px(8.))
@@ -788,32 +791,55 @@ fn format_duration(duration_ms: Option<i64>) -> String {
 }
 
 fn sync_artwork(app: &mut MusicShell, cx: &mut gpui::Context<MusicShell>) {
+    static COVER_WORKERS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
     let Ok(api) = library_api(cx) else {
         return;
     };
     let tracks = {
         let playback = app.playback.read(cx);
+        let first = ((-app.queue_ui.scroll.offset().y.as_f32()).max(0.) / ROW_HEIGHT) as usize;
+        let count =
+            ((app.queue_ui.scroll.bounds().size.height.as_f32() / ROW_HEIGHT).ceil() as usize + 10)
+                .clamp(16, 64);
         playback
             .queue
             .items
             .iter()
+            .skip(first.saturating_sub(4))
+            .take(count)
             .map(|item| &item.track)
             .filter(|track| track.has_artwork)
             .map(|track| track.id.clone())
             .collect::<Vec<_>>()
     };
+    let wanted: std::collections::HashSet<_> = tracks.iter().cloned().collect();
+    app.queue_artwork.retain(|id, _| wanted.contains(id));
+    app.queue_artwork_tasks.retain(|id, _| wanted.contains(id));
+    app.queue_artwork_failed.retain(|id| wanted.contains(id));
     for track_id in tracks {
+        if app.queue_artwork_tasks.len() >= 2 {
+            break;
+        }
         if app.queue_artwork.contains_key(&track_id)
             || app.queue_artwork_tasks.contains_key(&track_id)
+            || app.queue_artwork_failed.contains(&track_id)
         {
             continue;
         }
         let request_api = api.clone();
         let request_id = track_id.clone();
-        let request = Tokio::spawn(
-            cx,
-            async move { request_api.artwork(&request_id, None).await },
-        );
+        let request = Tokio::spawn(cx, async move {
+            let permit = COVER_WORKERS.acquire().await.ok()?;
+            let response = request_api.artwork(&request_id, None).await.ok()?;
+            tokio::task::spawn_blocking(move || {
+                let _permit = permit;
+                let bytes = crate::resources::thumbnail::queue_cover(&response.bytes)?;
+                Some(Arc::new(Image::from_bytes(ImageFormat::Png, bytes)))
+            })
+            .await
+            .ok()
+            .flatten()
+        });
         let task_id = track_id.clone();
         app.queue_artwork_tasks.insert(
             track_id,
@@ -824,12 +850,10 @@ fn sync_artwork(app: &mut MusicShell, cx: &mut gpui::Context<MusicShell>) {
                 };
                 this.update(cx, |app, cx| {
                     app.queue_artwork_tasks.remove(&task_id);
-                    if let Ok(Ok(response)) = result
-                        && let Some(format) =
-                            ImageFormat::from_mime_type(&response.metadata.content_type)
-                    {
-                        app.queue_artwork
-                            .insert(task_id, Arc::new(Image::from_bytes(format, response.bytes)));
+                    if let Ok(Some(image)) = result {
+                        app.queue_artwork.insert(task_id, image);
+                    } else {
+                        app.queue_artwork_failed.insert(task_id);
                     }
                     cx.notify();
                 });

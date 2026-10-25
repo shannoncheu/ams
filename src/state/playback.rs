@@ -878,7 +878,18 @@ impl PlaybackController {
         let has_artwork = track.has_artwork;
         let request = Tokio::spawn(cx, async move {
             let artwork = if has_artwork {
-                Some(api.artwork(&track_id, None).await)
+                Some(match api.artwork(&track_id, None).await {
+                    Ok(response) => tokio::task::spawn_blocking(move || {
+                        ArtworkFile::from_bytes(
+                            response.bytes,
+                            &response.metadata.content_type,
+                            &artwork_key,
+                        )
+                    })
+                    .await
+                    .map_err(|error| ApiError::InvalidResponse(error.to_string())),
+                    Err(error) => Err(error),
+                })
             } else {
                 None
             };
@@ -899,12 +910,8 @@ impl PlaybackController {
                     Ok((artwork, lyrics)) => {
                         if let Some(artwork) = artwork {
                             match artwork {
-                                Ok(response) => {
-                                    controller.snapshot.track.artwork = ArtworkFile::from_bytes(
-                                        response.bytes,
-                                        &response.metadata.content_type,
-                                        &artwork_key,
-                                    );
+                                Ok(artwork) => {
+                                    controller.snapshot.track.artwork = artwork;
                                 }
                                 Err(ApiError::AuthenticationRequired) => {
                                     log::info!("the saved session is no longer valid");

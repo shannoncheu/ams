@@ -1,3 +1,14 @@
 /target
+/validation
 
 /apps/android/target
+/dist
+/data
+/portable.flag
+.env
+.env.*
+*.pem
+*.key
+credentials*.json
+__pycache__/
+*.pyc

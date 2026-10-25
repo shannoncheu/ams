@@ -892,8 +892,8 @@ fn default_config_path() -> Result<PathBuf, String> {
     if let Some(path) = std::env::var_os("ROMUS_LOCAL_CONFIG") {
         return Ok(PathBuf::from(path));
     }
-    dirs::config_dir()
-        .map(|path| path.join("romus-demo-local-player/library.toml"))
+    crate::services::paths::config_dir()
+        .map(|path| path.join("library.toml"))
         .ok_or_else(|| "The system has no available local config directory".into())
 }
 

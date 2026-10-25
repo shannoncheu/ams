@@ -476,7 +476,7 @@ impl AlbumsPage {
                                         .rounded(px(14.))
                                         .overflow_hidden()
                                         .border_4()
-                                        .border_color(rgba(0xfa3558ff))
+                                        .border_color(rgba(0x91c8d5ff))
                                         .flex()
                                         .items_center()
                                         .justify_center()
@@ -508,7 +508,7 @@ impl AlbumsPage {
                                                 div()
                                                     .size(px(40.))
                                                     .rounded_full()
-                                                    .bg(rgba(0xfa3558ff))
+                                                    .bg(rgba(0x91c8d5ff))
                                                     .flex()
                                                     .items_center()
                                                     .justify_center()
@@ -1271,7 +1271,7 @@ fn form_footer(
                 .bg(if disabled {
                     rgba(0x292d39ff)
                 } else {
-                    rgba(0xfa3558ff)
+                    rgba(0x91c8d5ff)
                 })
                 .text_color(if disabled {
                     rgba(0x8c8f9b9c)

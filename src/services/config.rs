@@ -14,6 +14,22 @@ pub struct ClientConfig {
     pub logging: LoggingConfig,
     pub fonts: FontsConfig,
     pub linux: LinuxConfig,
+    pub appearance: AppearanceConfig,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct AppearanceConfig {
+    pub backdrop: Backdrop,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Backdrop {
+    #[default]
+    Auto,
+    Opaque,
+    Transparent,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -49,7 +65,7 @@ pub struct LoggingConfig {
 impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
-            directory: PathBuf::from("~/.local/state/romus-demo/logs"),
+            directory: PathBuf::from("logs"),
             filter: "info,gpui::window=off,wgpu=error,blade_graphics=error,naga=error,zbus=error,sum_tree=error,tracing::span=error,gpui_media::startup=debug,gpui_media::decv_frame=debug,gpui_media::frame_drop=debug".to_owned(),
             max_file_size_bytes: 10 * 1024 * 1024,
             retained_files: 7,
@@ -122,8 +138,7 @@ impl ClientConfig {
 }
 
 pub fn default_config_path() -> Result<PathBuf> {
-    let home = dirs::home_dir().context("unable to determine the user's home directory")?;
-    Ok(home.join(".config/romus-demo-local-player/config.toml"))
+    super::paths::client_config().context("unable to determine the application config directory")
 }
 
 fn create_default_config(path: &Path) -> Result<()> {

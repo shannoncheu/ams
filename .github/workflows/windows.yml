@@ -1,0 +1,102 @@
+name: Windows x64 Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+      RUSTFLAGS: '-C target-feature=+crt-static'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: windows-x64-static
+          cache-on-failure: true
+      - name: Record toolchain and locate FXC
+        shell: pwsh
+        run: |
+          rustc -Vv
+          cargo -V
+          $fxc = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/fxc.exe" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $fxc) { throw 'Windows SDK fxc.exe not found' }
+          "GPUI_FXC_PATH=$($fxc.FullName)" >> $env:GITHUB_ENV
+          Write-Output "FXC: $($fxc.FullName)"
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber
+      - name: Check and test
+        shell: pwsh
+        run: |
+          cargo check --locked --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build Release
+        shell: pwsh
+        run: |
+          cargo build --release --locked --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path target/x86_64-pc-windows-msvc/release/gpui-apple-music-demo.exe)) { throw 'EXE missing' }
+      - name: Collect third-party licenses
+        shell: pwsh
+        run: python scripts/collect-licenses.py
+      - name: Package EXE and Portable ZIP
+        shell: pwsh
+        run: ./scripts/package-windows.ps1
+      - name: Test extracted Portable from an unrelated working directory
+        shell: pwsh
+        run: ./scripts/smoke-windows.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-build-reports
+          path: |
+            dist/*.json
+            dist/*.txt
+            validation/windows-smoke/**
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gpui-music-windows-x64
+          path: |
+            dist/*.exe
+            dist/*.dll
+            dist/*.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: gpui-music-windows-x64
+          path: release-assets
+      - name: Attach verified build artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-assets/* --verify-tag --title "GPUI Music Player $GITHUB_REF_NAME" --notes-file docs/RELEASE_NOTES.md --prerelease

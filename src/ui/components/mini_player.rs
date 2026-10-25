@@ -11,13 +11,13 @@ use gpui::{
     WindowKind, WindowOptions, bounds, div, img, point, prelude::*, px, relative, rgb, rgba, size,
     svg,
 };
-use gpui_effects::{TimedText, color_flow};
+use gpui_effects::TimedText;
 use uic::components::slider::{
     Slider, SliderAppearance, SliderState, SliderThumbVisibility, SliderTooltipPlacement,
 };
 
 use crate::{
-    app::music_shell::{EffectsViewer, MusicShell},
+    app::music_shell::MusicShell,
     domain::lyrics::{LyricLine, LyricsMode},
     resources::RomusIcons,
     services::config::LoadedClientConfig,
@@ -42,8 +42,6 @@ pub struct MiniPlayer {
     main: AnyWindowHandle,
     lyrics_clock: lyrics_panel::LyricsPresentationClock,
     marquee: MiniLyricMarquee,
-
-    pub effects_viewer: Option<EffectsViewer>,
 }
 
 struct MiniLyricMarquee {
@@ -81,7 +79,6 @@ impl Render for MiniPlayer {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let config = &cx.global::<LoadedClientConfig>().config;
         let playback = self.playback.read(cx);
-        let track_id = playback.queue.current().as_ref().map(|t| t.id.clone());
         let playing = playback.snapshot.is_playing();
         let can_previous = playback.can_skip_previous();
         let can_next = playback.can_skip_next();
@@ -97,33 +94,15 @@ impl Render for MiniPlayer {
 
         let artwork = now_playing::playback_artwork(&snapshot);
 
-        let (effect_artwork, background_time) = {
-            let needs_refresh = self.effects_viewer.as_ref().is_none_or(|effect| {
-                effect.track_id != track_id || !Arc::ptr_eq(&effect.album_cover, &artwork)
-            });
-            if needs_refresh {
-                self.effects_viewer = Some(EffectsViewer {
-                    track_id,
-                    album_cover: artwork.clone(),
-                    clock: Default::default(),
-                });
-            }
-            let effect = self
-                .effects_viewer
-                .as_mut()
-                .expect("effects viewer initialized");
-            (
-                effect.album_cover.clone(),
-                effect
-                    .clock
-                    .sample(Instant::now(), playing && window.is_window_active()),
-            )
-        };
-
         let title = if snapshot.track.title.is_empty() {
             SharedString::from(strings::not_playing())
         } else {
             snapshot.track.title.clone()
+        };
+        let title = if can_previous && !snapshot.track.artist.is_empty() {
+            SharedString::from(format!("{title} · {}", snapshot.track.artist))
+        } else {
+            title
         };
         let lyric = current_lyric_element(
             &snapshot,
@@ -147,20 +126,18 @@ impl Render for MiniPlayer {
             .unwrap_or_else(|| "--".to_owned());
 
         div()
-            .when_some(config.fonts.font_family.clone(), |this, val| {
-                this.font_family(val)
-            })
-            .size_full()
-            .child(
-                div()
-                    .absolute()
-                    .top_0()
-                    .right_0()
-                    .bottom_0()
-                    .left_0()
-                    .overflow_hidden()
-                    .child(color_flow(effect_artwork).time(background_time).size_full()),
+            .font_family(
+                config
+                    .fonts
+                    .font_family
+                    .clone()
+                    .unwrap_or_else(|| crate::resources::fonts::DEFAULT_FAMILY.into()),
             )
+            .relative()
+            .size_full()
+            .rounded(px(20.))
+            .overflow_hidden()
+            .bg(crate::window::panel_color(cx))
             .text_color(rgba(0xffffffff))
             .cursor(CursorStyle::OpenHand)
             .on_mouse_down(MouseButton::Left, |_, window, _| {
@@ -187,11 +164,13 @@ impl MiniPlayer {
     fn render_cover(&self, artwork: Arc<Image>, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .id("mini-player-cover")
+            .role(gpui::Role::Button)
+            .aria_label("Expand player")
             .relative()
             .size(px(58.))
             .flex_none()
             .overflow_hidden()
-            .rounded(px(12.))
+            .rounded_full()
             .cursor(CursorStyle::PointingHand)
             .group("mini-cover")
             .shadow(vec![
@@ -202,7 +181,7 @@ impl MiniPlayer {
             .child(
                 img(artwork)
                     .size_full()
-                    .rounded(px(12.))
+                    .rounded_full()
                     .object_fit(ObjectFit::Cover),
             )
             .child(
@@ -212,7 +191,7 @@ impl MiniPlayer {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .rounded(px(12.))
+                    .rounded_full()
                     .opacity(0.)
                     .group_hover("mini-cover", |overlay| {
                         overlay.opacity(1.).bg(rgba(0x090a0fc2))
@@ -248,7 +227,7 @@ impl MiniPlayer {
                     .w_full()
                     .truncate()
                     .text_size(px(11.5))
-                    .font_weight(FontWeight::BOLD)
+                    .font_weight(FontWeight::MEDIUM)
                     .window_control_area(WindowControlArea::Drag)
                     .child(title),
             )
@@ -377,7 +356,7 @@ impl MiniPlayer {
                             .bottom(px(5.))
                             .right(px(3.))
                             .text_size(px(9.))
-                            .font_weight(FontWeight::BOLD)
+                            .font_weight(FontWeight::MEDIUM)
                             .text_color(rgb(0xffffffff))
                             .child("1"),
                     )
@@ -631,7 +610,11 @@ pub fn open(
             app_owns_titlebar_drag: true,
             is_resizable: false,
             is_minimizable: false,
-            window_background: WindowBackgroundAppearance::Transparent,
+            window_background: if cfg!(target_os = "windows") {
+                WindowBackgroundAppearance::Blurred
+            } else {
+                WindowBackgroundAppearance::Transparent
+            },
             app_id: Some("romus".to_owned()),
             window_min_size: Some(size(
                 px(layout::MINI_PLAYER_WIDTH),
@@ -643,6 +626,7 @@ pub fn open(
         move |window, cx| {
             window.set_window_title("Romus");
             crate::window::remove_frame(window);
+            crate::window::configure_background(window, cx);
             cx.new(|cx| {
                 cx.observe(&playback, |_, _, cx| cx.notify()).detach();
                 cx.observe(&timeline_slider, |_, _, cx| cx.notify())
@@ -667,7 +651,6 @@ pub fn open(
                     music,
                     playback,
                     timeline_slider,
-                    effects_viewer: None,
                     main,
                     lyrics_clock: lyrics_panel::LyricsPresentationClock::default(),
                     marquee: MiniLyricMarquee::default(),

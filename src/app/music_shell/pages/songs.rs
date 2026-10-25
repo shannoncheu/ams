@@ -894,7 +894,7 @@ fn show_track_info_for_page(
                             .w(px(88.))
                             .h(px(36.))
                             .rounded(px(10.))
-                            .bg(rgba(0xfa3558ff))
+                            .bg(rgba(0x91c8d5ff))
                             .hover(|button| button.bg(rgba(0xff496aff)))
                             .cursor_pointer()
                             .flex()
@@ -1153,7 +1153,7 @@ impl TrackEditor {
                                                 .flex()
                                                 .items_center()
                                                 .justify_center()
-                                                .hover(|cover| cover.border_color(rgba(0xfa3558bb)))
+                                                .hover(|cover| cover.border_color(rgba(0x91c8d5bb)))
                                                 .on_click(move |_, _, app| {
                                                     pick_editor.update(app, |editor, cx| {
                                                         editor.select_cover(cx)
@@ -1963,7 +1963,7 @@ fn form_footer(
                 .bg(if disabled {
                     rgba(0x292d39ff)
                 } else {
-                    rgba(0xfa3558ff)
+                    rgba(0x91c8d5ff)
                 })
                 .text_color(if disabled {
                     rgba(0x8c8f9b9c)

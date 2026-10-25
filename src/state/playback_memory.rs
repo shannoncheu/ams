@@ -72,11 +72,10 @@ pub(super) struct PlaybackMemoryStore {
 
 impl PlaybackMemoryStore {
     pub(super) fn load_default() -> Result<Self> {
-        let state_directory = dirs::state_dir()
-            .or_else(dirs::data_local_dir)
+        let state_directory = crate::services::paths::state_dir()
             .context("unable to determine the user's local state directory")?;
         Ok(Self {
-            path: state_directory.join("romus/playback.json"),
+            path: state_directory.join("playback.json"),
         })
     }
 

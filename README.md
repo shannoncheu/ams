@@ -1,92 +1,109 @@
-# GPUI Apple Music Demo
+# AMS — GPUI Music Player
 
-一个有点像 Apple Music、既能作为本地音乐播放器使用，也负责展示“哇，GPUI 还能这样？”的 demo。
+Rust + native GPUI music player targeting **Windows 10 x64**, adapted from
+[cradiy/gpui-apple-music-demo](https://github.com/cradiy/gpui-apple-music-demo)
+with its pinned [GPUI Fusion](https://github.com/cradiy/gpui-fusion) backend.
+No Electron, Tauri, WebView, or web frontend.
 
-An Apple Music-ish local player demo whose other job is to make people say, “Wait, GPUI can do that?”
+![Main player](docs/images/player-preview.png)
+![Mini player](docs/images/mini-preview.png)
 
-![Fullscreen now playing view](screenshots/2.png)
+Screenshots use independent test artwork/lyrics. See verification status below
+before treating them as Windows screenshots.
 
-![Library and lyrics view](screenshots/1.png)
+## Features
 
-## 中文
+- Slate/Fluent palette: `#20252B`, `#303840`, ice-blue `#91C8D5`, readable light text.
+- Circular cover, original left controls/right lyrics layout, native GPUI wave progress.
+- Local library, metadata/artwork, playlists, favorites, queue, shuffle/repeat and volume.
+- Existing Symphonia + CPAL playback and line/word timed lyrics with smooth scrolling.
+- Frameless native caption buttons: minimize, maximize/restore, close; transparent
+  at rest with subtle hover backgrounds. Native resizing, drag, Snap and caption
+  double-click remain delegated to GPUI/Win32.
+- Bundled Noto Sans SC variable font (SIL OFL 1.1). Title Medium, artist Regular,
+  current lyric Semibold, surrounding lyrics Regular; no font installation.
+- Win10 Acrylic is optional and dynamically detected. Older builds, RDP,
+  disabled transparency or unavailable APIs fall back to an opaque slate panel.
+  Set `[appearance] backdrop = "opaque"` to force the fallback.
+- Queue artwork uses 96px thumbnails, a viewport working set capped at 64 covers,
+  two background workers and decode allocation limits; full-size covers are not
+  uploaded for small queue cells. Main cover file preparation also runs off the UI.
+- Mini player shares the original playback entity and restores the main window.
+- Portable ZIP keeps configuration, state, logs and artwork cache beside the EXE.
 
-这是一个用我 fork 的 [GPUI](https://github.com/cradiy/gpui) 写的 Apple Music 风格 demo。它现在也是一个完整的本地音乐播放器：能管理本地曲库和播放列表，播放音乐，读取元数据、封面与歌词，同时保留了一些挺唬人的动效。
+YouTube Music remains a planned source. The `MusicProvider` interface and local
+adapter exist, but Google login, live YouTube metadata and remote playlist calls
+are **not implemented**. There is no compliant general official native YouTube
+Music audio API for this UI. No stream extraction, cookies or DRM bypass is used.
+See [provider boundaries](docs/PROVIDERS.md).
 
-我写它主要是为了展示 GPUI 在桌面 UI、媒体播放和动态视觉效果上的能力，同时验证我在 fork 中增加和改进的功能，可以在一个真实一点、好看一点的场景里一起工作。
+## Download and launch
 
-### 现在能演示什么
+Use a **preview** from [Releases](https://github.com/shannoncheu/ams/releases), or the
+`gpui-music-windows-x64` artifact from a successful [Windows x64 Release](https://github.com/shannoncheu/ams/actions/workflows/windows.yml) Actions run.
 
-- Apple Music 风格的窗口布局、玻璃侧边栏和播放控制条
-- 带封面取色与动态光晕的全屏 Now Playing 界面
-- 基于 `gpui_media` 的真实音频播放、进度与控制
-- 本地曲库、搜索、收藏、播放队列和播放列表管理
-- 内嵌元数据、封面和歌词解析
-- 普通逐行 LRC、带结束时间的 LRC，以及逐字歌词 UI
-- 歌词高亮、平滑滚动、长音节动效与间奏省略号
-- Linux MPRIS 媒体状态，可被桌面面板和媒体键识别
-- 面向本地曲库的歌曲、歌手、专辑和播放列表搜索
+| Asset | Usage |
+| --- | --- |
+| `GPUI-Music-Player.exe` | Embedded fonts/icons/shaders; normal per-user storage. Check the dependency report if DLLs accompany a release. |
+| `GPUI-Music-Player-Windows-x64.zip` | EXE, any required runtime DLLs, instructions and third-party notices. |
+| `GPUI-Music-Player-Portable-x64.zip` | Complete bundle with `portable.flag`; extract into a writable folder and run without administrator rights. |
+| `SHA256SUMS.txt` | Verify downloads with `Get-FileHash -Algorithm SHA256`. |
 
-### 运行
+Do not run inside the ZIP or extract into Program Files for portable use.
+The EXE and ZIP are unsigned previews; signing is not currently configured.
+Use the library icon at the upper left (or the empty cover) to import music.
+Hover the volume icon for its slider. Click the mini cover to restore the main player.
 
-当前支持 Linux、Windows 和 macOS。运行前需要安装可用的 Rust 工具链，以及 GPUI / `gpui_media` 在对应平台所需的系统环境。
+## Windows build
 
-```bash
-cargo run --release
+Install Rust stable **MSVC x64**, Visual Studio 2022 Build Tools with Desktop C++
+x64/x86 tools, and Windows 10 SDK including `fxc.exe`. In Developer PowerShell:
+
+```powershell
+cargo check --locked
+cargo test --locked
+cargo build --release --locked
 ```
 
-启动后可以直接通过界面选择本地音频或歌词文件。程序记录原始文件路径，并将曲库、播放列表和其他播放器状态保存在本地。
+If FXC is not found, set `GPUI_FXC_PATH` to the installed SDK's x64 `fxc.exe`.
+The Windows workflow uses `windows-2022`, static CRT linkage, checks/tests,
+Release compilation, dependency inspection, license collection and packaging.
+It extracts the Portable ZIP into a new folder, starts it from an unrelated
+working directory and verifies normal exit, native window creation and local config.
+Artifacts are uploaded automatically; `v*` tag builds attach them to preview Releases.
 
-Linux 默认显示右上角的内联窗口按钮。若使用平铺窗口管理器，可在 `~/.config/romus-demo-local-player/config.toml` 中设置以下内容并重启，隐藏窗口按钮（不影响页面工具栏、Windows 或 macOS）：
+For a local package, run `python scripts/collect-licenses.py` then
+`./scripts/package-windows.ps1` after Release compilation. Package scripts require
+Developer PowerShell (`dumpbin.exe`). See [Windows instructions](docs/WINDOWS.md)
+and [portable paths](docs/PORTABLE.md).
 
-```toml
-[linux]
-titlebar = "hidden" # 默认 "inline"
-```
+## Verification and known limitations
 
-### 项目定位
+- Linux compilation and automated tests have run; native rendering and mini/main
+  switching were exercised under headless Wayland with software Vulkan.
+- GitHub Actions Windows results are reported by the actual workflow run. A
+  workflow file by itself is not a successful Windows build.
+- `windows-2022` runs **Windows Server 2022**, not Windows 10. Successful CI startup
+  does not validate real Win10 Acrylic, fonts, Snap, taskbar bounds, audio devices,
+  DPI/multi-monitor behavior, or hardware GPU performance.
+- **Windows 10 physical-machine acceptance has not been completed.** No 100 MB
+  memory claim, 60 FPS guarantee, or CPU/GPU target pass is made.
+- Linux Pulse/ALSA virtual-output retests showed intermittent I/O errors despite
+  successful nonzero PCM captures. Audio stability remains under investigation.
+- Background image modes, full cover crossfade, mini expand/collapse animation,
+  user-toggleable always-on-top and indexed large-library loading remain pending.
 
-它依旧是一个用于展示 GPUI 桌面 UI、媒体播放和动态视觉效果的 demo，但曲库、搜索、播放队列、收藏和播放列表等核心功能已经按本地播放器完整实现。它不依赖账号或云端服务，歌曲仍保留在原路径，程序只在本地配置中记录曲库和播放列表信息。
+See [current results](docs/PROGRESS.zh-CN.md) and Actions build reports. CI peak
+working set is startup telemetry on Server 2022, not a Win10 performance benchmark.
 
-## English
+## Licenses and credits
 
-This is an Apple Music-inspired demo built with [my GPUI fork](https://github.com/cradiy/gpui). It is also a complete local music player: it manages a local library and playlists, plays audio, reads metadata, artwork, and lyrics, and comes with enough motion and glow to look suspiciously confident.
+This project retains the upstream [MIT license](LICENSE), copyright and history.
+GPUI Fusion includes MIT and Apache-2.0 packages with Zed-derived attribution;
+Lucide icons retain ISC/Feather notices. The bundled font's [OFL](assets/fonts/OFL.txt)
+and [source/hash](assets/fonts/SOURCE.md) ship with each package. CI collects locked
+dependency notices in `THIRD_PARTY_NOTICES.txt` and a license inventory.
 
-I built it to showcase what GPUI can do for desktop UI, media playback, and animated visual effects—and to exercise the features and improvements in my fork inside something more convincing than a rectangle named `example`.
-
-### What it demonstrates
-
-- An Apple Music-like window, glass sidebar, and compact player bar
-- A fullscreen Now Playing view with artwork-driven animated glow
-- Real audio playback, progress, and controls powered by `gpui_media`
-- Local library, search, favorites, play queue, and playlist management
-- Embedded metadata, artwork, and lyric extraction
-- Line-timed LRC, LRC with explicit end times, and word-timed lyric UI
-- Lyric highlighting, smooth scrolling, long-syllable motion, and animated gap dots
-- Linux MPRIS integration for desktop panels and media keys
-- Search across the local song, artist, album, and playlist library
-
-### Run it
-
-The demo supports Linux, Windows, and macOS. You will need a Rust toolchain and the platform-specific system environment required by GPUI and `gpui_media`.
-
-```bash
-cargo run --release
-```
-
-After startup, use the interface to select local audio or lyric files. The player records the original file paths and keeps the library, playlists, and other player state locally.
-
-On Linux, inline window buttons appear at the top right by default. To hide them, set `[linux]` → `titlebar = "hidden"` in `~/.config/romus-demo-local-player/config.toml` and restart. Use `"inline"` to restore them. This does not affect page tools, Windows, or macOS.
-
-### Project scope
-
-It remains a demo for GPUI desktop UI, media playback, and animated visual effects, but its library, search, queue, favorites, and playlist features are fully implemented as a local player. It has no account or cloud dependency: songs stay at their original paths, while library and playlist information is recorded in local configuration.
-
-## Android
-
-See [Android build and run instructions](apps/android/README.md).
-
-## License and credits
-
-本 demo 采用 [MIT License](LICENSE)，喜欢就拿去玩。要是你顺手又加了什么有意思的功能，记得回来告诉我。
-
-This demo is available under the [MIT License](LICENSE). Fork it, tweak it, make it glow harder—and if you add something interesting, do come back and tell me.
+PixelPlayer is only a visual inspiration for the independently written sine-wave
+track. No PixelPlayer source or assets are redistributed. Original upstream
+documentation is preserved in [UPSTREAM_README.md](docs/UPSTREAM_README.md).

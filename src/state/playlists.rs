@@ -210,8 +210,8 @@ fn playlist_cover_cache_path(playlist_id: &str, cover_url: &str) -> Option<PathB
         .filter(char::is_ascii_digit)
         .collect::<String>();
     Some(
-        dirs::cache_dir()?
-            .join("romus/playlist-covers")
+        crate::services::paths::cache_dir()?
+            .join("playlist-covers")
             .join(format!(
                 "{safe_id}-{}.image",
                 if safe_version.is_empty() {

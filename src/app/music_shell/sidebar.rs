@@ -38,7 +38,7 @@ pub fn input_appearance() -> InputAppearance {
 
 fn description_input_appearance() -> InputAppearance {
     InputAppearance {
-        focus_border: rgba(0xfa2d55a8).into(),
+        focus_border: rgba(0x91c8d5a8).into(),
         ..input_appearance()
     }
 }
@@ -260,7 +260,7 @@ impl Sidebar {
                                         .id("playlist-cover-picker")
                                         .border_4()
                                         .rounded(px(14.))
-                                        .border_color(rgba(0xfa3558ff))
+                                        .border_color(rgba(0x91c8d5ff))
                                         .size(px(220.))
                                         .overflow_hidden()
                                         .flex()
@@ -285,7 +285,7 @@ impl Sidebar {
                                                 div()
                                                     .size(px(40.))
                                                     .rounded_full()
-                                                    .bg(rgba(0xfa3558ff))
+                                                    .bg(rgba(0x91c8d5ff))
                                                     .flex()
                                                     .items_center()
                                                     .justify_center()
@@ -394,7 +394,7 @@ impl Sidebar {
                                 .bg(if create_disabled {
                                     rgba(0x292d39ff)
                                 } else {
-                                    rgba(0xfa3558ff)
+                                    rgba(0x91c8d5ff)
                                 })
                                 .text_color(if create_disabled {
                                     rgba(0x8c8f9b9c)
@@ -1054,8 +1054,8 @@ fn playlist_cover_cache_path(playlist_id: &str, cover_url: &str) -> Option<PathB
         &safe_version
     };
     Some(
-        dirs::cache_dir()?
-            .join("romus/playlist-covers")
+        crate::services::paths::cache_dir()?
+            .join("playlist-covers")
             .join(format!("{safe_id}-{version}.image")),
     )
 }

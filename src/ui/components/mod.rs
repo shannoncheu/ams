@@ -7,4 +7,5 @@ pub mod player_bar;
 pub mod queue_panel;
 pub mod top_bar;
 pub mod track_list;
+pub mod wave_progress;
 pub mod window_controls;

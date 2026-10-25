@@ -40,7 +40,12 @@ impl ArtworkFile {
             ImageFormat::Webp => "webp",
             _ => "jpg",
         };
-        let path = std::env::temp_dir().join(format!("romus-client-cover-{key}.{extension}"));
+        let directory = crate::services::paths::artwork_dir();
+        if let Err(error) = fs::create_dir_all(&directory) {
+            log::warn!("unable to create artwork cache: {error}");
+            return None;
+        }
+        let path = directory.join(format!("romus-client-cover-{key}.{extension}"));
         if let Err(error) = fs::write(&path, &bytes) {
             log::warn!("unable to expose cover art: {error}");
             return None;
@@ -138,7 +143,12 @@ fn materialize_artwork(artwork: EmbeddedArtwork) -> Option<Arc<ArtworkFile>> {
         ImageFormat::Webp => "webp",
         _ => "jpg",
     };
-    let path = std::env::temp_dir().join(format!(
+    let directory = crate::services::paths::artwork_dir();
+    if let Err(error) = fs::create_dir_all(&directory) {
+        log::warn!("unable to create artwork cache: {error}");
+        return None;
+    }
+    let path = directory.join(format!(
         "romus-client-cover-{}.{}",
         process::id(),
         extension

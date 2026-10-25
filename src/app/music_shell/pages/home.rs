@@ -974,7 +974,7 @@ fn play_overlay(
                 .id(("home-album-play", index))
                 .size(px(34.))
                 .rounded_full()
-                .bg(rgba(0xfa2d55ff))
+                .bg(rgba(0x91c8d5ff))
                 .flex()
                 .items_center()
                 .justify_center()

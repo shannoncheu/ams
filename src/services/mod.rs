@@ -3,6 +3,8 @@ pub mod config;
 pub mod local;
 #[cfg(target_os = "linux")]
 pub mod mpris;
+pub mod paths;
+pub mod providers;
 pub mod session;
 
 use crate::services::api::{ApiError, LibraryApi, PlaylistsApi, ProfileApi};

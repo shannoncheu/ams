@@ -6,7 +6,7 @@ use uic::components::{
     modal::{Modal, ModalAppearance},
 };
 
-pub const ACCENT: u32 = 0xfa2d55;
+pub const ACCENT: u32 = 0x91c8d5;
 
 /// Named colors for the current dark UI. Swap this struct later for a Theme global.
 #[derive(Clone, Copy)]
@@ -24,13 +24,13 @@ pub struct Palette {
 impl Palette {
     pub fn dark() -> Self {
         Self {
-            accent: rgba(0xfa2d55ff).into(),
-            surface: rgba(0x1c202cff).into(),
-            surface_raised: rgba(0x12141ccf).into(),
-            text: rgba(0xf1f1f5ee).into(),
-            text_muted: rgba(0xb2b3bd8c).into(),
+            accent: rgba(0x91c8d5ff).into(),
+            surface: rgba(0x20252bff).into(),
+            surface_raised: rgba(0x303840e8).into(),
+            text: rgba(0xf2f4f7ff).into(),
+            text_muted: rgba(0xaab4bfff).into(),
             border_subtle: rgba(0xffffff1a).into(),
-            focus: rgba(0xfa2d55cc).into(),
+            focus: rgba(0x91c8d5cc).into(),
             danger: rgba(0xff6684ff).into(),
         }
     }
@@ -56,7 +56,7 @@ pub fn frosted_appearance() -> FrostedGlassAppearance {
         blur_radius: px(18.),
         saturation: 1.08,
         brightness: 0.90,
-        tint: rgba(0x141722b0).into(),
+        tint: rgba(0x303840b0).into(),
         edge: rgba(0xffffff26).into(),
         edge_width: px(1.),
         sheen: 0.02,
@@ -74,7 +74,7 @@ pub fn input_appearance() -> InputAppearance {
         placeholder: p.text_muted,
         focus_border: p.focus,
         caret: p.accent,
-        selection: rgba(0xfa2d5545).into(),
+        selection: rgba(0x91c8d545).into(),
         caret_width: px(1.),
         caret_height: px(21.),
     }
@@ -86,7 +86,7 @@ pub fn search_appearance() -> InputAppearance {
         placeholder: rgba(0xe2e2e7c2).into(),
         focus_border: p.focus,
         caret: p.accent,
-        selection: rgba(0xec41683d).into(),
+        selection: rgba(0x91c8d53d).into(),
         caret_width: px(1.),
         caret_height: px(17.),
     }
@@ -199,9 +199,9 @@ pub fn dark_modal_appearance() -> ModalAppearance {
         .ok_button(
             defaults
                 .ok_button
-                .background(rgba(0xfa3558ff).into())
+                .background(rgba(0x91c8d5ff).into())
                 .foreground(rgba(0xffffffff).into())
-                .border(rgba(0xfa3558ff).into())
+                .border(rgba(0x91c8d5ff).into())
                 .hover_background(rgba(0xff496aff).into())
                 .radius(px(10.)),
         )
@@ -219,7 +219,7 @@ pub fn dark_modal_appearance() -> ModalAppearance {
 pub fn style_modal(modal: Modal) -> Modal {
     modal
         .appearance(dark_modal_appearance())
-        .bg(rgba(0x1c202cff))
+        .bg(rgba(0x20252bff))
         .text_color(rgba(0xf4f4f7f2))
         .rounded(px(22.))
         .border_1()

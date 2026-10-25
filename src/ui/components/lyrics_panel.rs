@@ -254,6 +254,7 @@ struct LyricRowContext {
     mode: LyricsMode,
     position: Duration,
     large: bool,
+    reference: bool,
     manually_scrolling: bool,
     seek: LyricsSeek,
     mobile_rows: Option<Rc<Vec<MobileLyricRow>>>,
@@ -270,7 +271,7 @@ pub fn render(
     let seek: LyricsSeek = Rc::new(move |start, cx| {
         controller.update(cx, |player, cx| player.seek_to(start, cx));
     });
-    render_panel(playback, state, seek, false, width, None)
+    render_panel(playback, state, seek, false, width, None, None)
 }
 
 pub fn render_fullscreen(
@@ -281,7 +282,22 @@ pub fn render_fullscreen(
     let seek: LyricsSeek = Rc::new(move |start, cx| {
         controller.update(cx, |player, cx| player.seek_to(start, cx));
     });
-    render_panel(playback, state, seek, true, 0., None)
+    render_panel(playback, state, seek, true, 0., None, None)
+}
+
+/// Desktop reference layout; timing, seeking and springs remain shared with the
+/// regular lyrics panel. Geometry is scaled from a single logical panel size.
+pub fn render_reference(
+    playback: &PlaybackState,
+    state: &mut LyricsPanelState,
+    controller: Entity<PlaybackController>,
+    scale: f32,
+    height: f32,
+) -> AnyElement {
+    let seek: LyricsSeek = Rc::new(move |start, cx| {
+        controller.update(cx, |player, cx| player.seek_to(start, cx));
+    });
+    render_panel(playback, state, seek, true, 0., None, Some((scale, height)))
 }
 
 pub fn render_mobile(
@@ -346,7 +362,7 @@ pub fn render_mobile(
             .lines
             .iter()
             .map(|line| {
-                let primary = wrap(line.text.clone(), 28., FontWeight::BOLD)
+                let primary = wrap(line.text.clone(), 28., FontWeight::SEMIBOLD)
                     .into_iter()
                     .map(|range| slice_lyric_line(line, range))
                     .collect::<Vec<_>>();
@@ -383,7 +399,7 @@ pub fn render_mobile(
         window.request_animation_frame();
     }
     let rows = state.mobile_layout.as_ref().unwrap().rows.clone();
-    render_panel(playback, state, seek, true, width, Some(rows))
+    render_panel(playback, state, seek, true, width, Some(rows), None)
 }
 
 fn render_panel(
@@ -393,10 +409,13 @@ fn render_panel(
     fullscreen: bool,
     width: f32,
     mobile_rows: Option<Rc<Vec<MobileLyricRow>>>,
+    reference_layout: Option<(f32, f32)>,
 ) -> AnyElement {
     let mobile = mobile_rows.is_some();
     let mobile_viewport_height = px(state.mobile_viewport_height);
-    let scale = if mobile { width / 392. } else { 1. };
+    let reference = reference_layout.is_some();
+    let scale =
+        reference_layout.map_or_else(|| if mobile { width / 392. } else { 1. }, |layout| layout.0);
     let lyrics = &playback.track.lyrics;
     let document_id = Arc::as_ptr(&lyrics.lines) as *const LyricLine as usize;
     let position = state.clock.position(document_id, playback);
@@ -429,7 +448,9 @@ fn render_panel(
     rows.push(
         div()
             .w_full()
-            .h(px(if mobile {
+            .h(px(if let Some((_, height)) = reference_layout {
+                height / 2.
+            } else if mobile {
                 100. * scale
             } else if fullscreen {
                 300.
@@ -451,6 +472,7 @@ fn render_panel(
         mode: lyrics.mode,
         position,
         large: fullscreen,
+        reference,
         manually_scrolling,
         seek,
         mobile_rows,
@@ -560,7 +582,9 @@ fn render_panel(
     rows.push(
         div()
             .w_full()
-            .h(if mobile {
+            .h(if let Some((_, height)) = reference_layout {
+                px(height / 2.)
+            } else if mobile {
                 mobile_viewport_height
             } else {
                 px(if fullscreen { 300. } else { 370. })
@@ -590,7 +614,9 @@ fn render_panel(
         .when(fullscreen && !mobile, |lyrics| lyrics.h(relative(0.98)))
         .when(mobile, |lyrics| lyrics.h_full().min_h_0())
         .when(!fullscreen, |lyrics| lyrics.h_full().min_h_0())
-        .px(px(if mobile {
+        .px(px(if reference {
+            8. * scale
+        } else if mobile {
             0.
         } else if fullscreen {
             30.
@@ -599,7 +625,13 @@ fn render_panel(
         }))
         .flex()
         .flex_col()
-        .gap(px(if fullscreen { 10. } else { 8. }))
+        .gap(px(if reference {
+            0.
+        } else if fullscreen {
+            10.
+        } else {
+            8.
+        }))
         .overflow_y_scroll()
         .track_scroll(&scroll_handle)
         .on_scroll_wheel(move |_, _, _| {
@@ -630,7 +662,7 @@ fn render_panel(
         .when(!fullscreen, |panel| {
             panel
                 .w(px(width))
-                .bg(rgb(0x2c2d32))
+                .bg(rgb(0x303840))
                 .border_l_1()
                 .border_color(rgba(0xffffff10))
                 .child(
@@ -646,7 +678,7 @@ fn render_panel(
                                 // .uniform(0, [0.34, 0.12, 0.58, 0.38])
                                 // .uniform(1, [0.72, 0.46, 0.16, 0.41])
                                 // .uniform(2, [0.06, 0.0, 0.0, 0.0])
-                                // .bg(rgb(0x2c2d32))
+                                // .bg(rgb(0x303840))
                                 // .effect_opacity(0.38)
                                 .time(glow_time)
                                 .size_full(),
@@ -664,7 +696,7 @@ fn render_panel(
                     .items_center()
                     .justify_between()
                     .text_size(px(12.))
-                    .font_weight(FontWeight::BOLD)
+                    .font_weight(FontWeight::SEMIBOLD)
                     .text_color(rgba(0xffffffe0))
                     .child("LYRICS"),
             )
@@ -941,6 +973,15 @@ fn lyric_visual_target(index: usize, context: &LyricRowContext) -> LyricVisual {
             _ => 0x40,
         }
     };
+    let resting_alpha = if context.reference && context.mode == LyricsMode::Synced {
+        match distance {
+            0 | 1 => 0x88,
+            2 => 0x60,
+            _ => 0x44,
+        }
+    } else {
+        resting_alpha
+    };
     let text_alpha = if is_active { 0xff } else { resting_alpha };
     LyricVisual {
         // Focus controls typography; playback activation alone controls color
@@ -1000,20 +1041,37 @@ fn lyric_row(
     let emphasis = visual.emphasis.value.clamp(0., 1.);
     let activation = visual.activation.value.clamp(0., 1.);
     let text_alpha = (visual.alpha.value.clamp(0., 1.) * 255.).round() as u32;
-    let text_color = rgba(0xffffff00 | text_alpha);
+    let text_color = rgba(0xf2f4f700 | text_alpha);
     let translation_color = rgba(0xffffff00 | text_alpha.saturating_sub(0x10));
     let blur_radius = if context.active == Some(index) {
         0.
     } else {
-        lyric_blur_radius(index.abs_diff(context.focus).max(1), context.large) * context.scale
+        if context.reference {
+            0.18 * index.abs_diff(context.focus).min(3) as f32 * context.scale
+        } else {
+            lyric_blur_radius(index.abs_diff(context.focus).max(1), context.large) * context.scale
+        }
     };
     let blur_amount = visual.blur.value.clamp(0., 1.);
-    let font_weight = FontWeight::MEDIUM;
-    let normal_text_size = if context.large { 24. } else { 16. } * context.scale;
-    let active_text_size = if context.large { 28. } else { 19. } * context.scale;
+    let font_weight = FontWeight::NORMAL;
+    let normal_text_size = if context.reference {
+        13.
+    } else if context.large {
+        24.
+    } else {
+        16.
+    } * context.scale;
+    let active_text_size = if context.reference {
+        15.
+    } else if context.large {
+        28.
+    } else {
+        19.
+    } * context.scale;
     let text_size = normal_text_size
         + (active_text_size - normal_text_size) * visual.emphasis.value.clamp(0., 1.03);
-    let mobile_scale = context.mobile_rows.is_some() && context.mode == LyricsMode::Synced;
+    let mobile_scale =
+        (context.mobile_rows.is_some() || context.reference) && context.mode == LyricsMode::Synced;
     let raster_text_size = if mobile_scale {
         if emphasis > 0.001 {
             active_text_size
@@ -1056,29 +1114,34 @@ fn lyric_row(
             {
                 TimedText::new(part.text.clone(), units)
                     .position(context.position)
-                    .active_fill(rgb(0xffffff))
+                    .active_fill(rgb(0xf2f4f7))
                     .inactive_opacity(1.)
                     .progressive_lift(px(if context.large { 3. } else { 1. } * activation))
                     .w_full()
                     .line_height(relative(1.3))
                     .reveal_wave_width(px(8.))
-                    .font_weight(FontWeight::BOLD)
+                    .font_weight(FontWeight::SEMIBOLD)
                     .text_color(rgba(
-                        0xffffff00
-                            | (visual.resting_alpha.value.clamp(0., 1.) * 255.).round() as u32,
+                        0xf2f4f700
+                            | (visual
+                                .resting_alpha
+                                .value
+                                .clamp(if context.reference { 0.65 } else { 0. }, 1.)
+                                * 255.)
+                                .round() as u32,
                     ))
                     .into_any_element()
             } else {
                 lyric_text(part.text.clone(), blur_radius, blur_amount)
                     .w_full()
                     .line_height(relative(1.3))
-                    .font_weight(FontWeight::BOLD)
+                    .font_weight(FontWeight::SEMIBOLD)
                     .text_color(text_color)
                     .into_any_element()
             }
         }))
         .into_any_element();
-    let highlighted = if activation > 0.001 {
+    let highlighted = if activation > 0.001 && !context.reference {
         subtree_bloom(
             highlighted,
             BloomOptions {
@@ -1096,7 +1159,7 @@ fn lyric_row(
     let primary =
         if context.mode == LyricsMode::Plain {
             div()
-                .font_weight(FontWeight::BOLD)
+                .font_weight(FontWeight::SEMIBOLD)
                 .children(parts.iter().map(|part| div().child(part.text.clone())))
                 .into_any_element()
         } else {
@@ -1121,7 +1184,7 @@ fn lyric_row(
                                 lyric_text(part.text.clone(), blur_radius, blur_amount)
                                     .w_full()
                                     .line_height(relative(1.3))
-                                    .font_weight(FontWeight::MEDIUM)
+                                    .font_weight(FontWeight::NORMAL)
                                     .text_color(text_color)
                             },
                         ))),
@@ -1199,20 +1262,34 @@ fn lyric_row(
         .id(("lyric-row", index))
         .relative()
         .w_full()
-        .min_h(px(if context.large { 64. } else { 44. }))
+        .min_h(px(if context.reference {
+            40. * context.scale
+        } else if context.large {
+            64.
+        } else {
+            44.
+        }))
         .when(context.mode == LyricsMode::Synced, |row| {
             row.h(px(context.mobile_rows.as_ref().map_or_else(
-                || match (context.large, line.translation.is_some()) {
-                    (true, true) => 72.,
-                    (true, false) => 64.,
-                    (false, true) => 56.,
-                    (false, false) => 44.,
+                || {
+                    if context.reference {
+                        (if line.translation.is_some() { 50. } else { 40. }) * context.scale
+                    } else {
+                        match (context.large, line.translation.is_some()) {
+                            (true, true) => 72.,
+                            (true, false) => 64.,
+                            (false, true) => 56.,
+                            (false, false) => 44.,
+                        }
+                    }
                 },
                 |rows| rows[index].height,
             )))
             .flex_none()
         })
-        .px(px(if context.mobile_rows.is_some() {
+        .px(px(if context.reference {
+            18. * context.scale
+        } else if context.mobile_rows.is_some() {
             32. * context.scale
         } else if context.large {
             26.

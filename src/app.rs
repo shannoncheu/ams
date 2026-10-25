@@ -1,8 +1,6 @@
 pub mod music_shell;
 
-use gpui::{
-    AppContext, Entity, ParentElement, Render, Styled, Window, div, prelude::FluentBuilder,
-};
+use gpui::{AppContext, Entity, ParentElement, Render, Styled, Window, div};
 use uic::components::{context_menu, modal};
 
 use crate::services::config::LoadedClientConfig;
@@ -31,9 +29,13 @@ impl Render for MusicApp {
         let modal_layer = modal::layer(cx);
         div()
             .size_full()
-            .when_some(config.fonts.font_family.clone(), |this, family_name| {
-                this.font_family(family_name)
-            })
+            .font_family(
+                config
+                    .fonts
+                    .font_family
+                    .clone()
+                    .unwrap_or_else(|| crate::resources::fonts::DEFAULT_FAMILY.into()),
+            )
             .child(self.music_shell.clone())
             .child(context_menu::layer(cx))
             .child(modal_layer)

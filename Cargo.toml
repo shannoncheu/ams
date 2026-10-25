@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 readme = "README.md"
-description = "An Apple Music-inspired demo built to show off a GPUI fork"
+description = "Native GPUI music player with local playback and portable Windows builds"
 
 [workspace]
 members = ["apps/android"]
@@ -33,6 +33,7 @@ gpui_media = { git = "https://github.com/cradiy/gpui-fusion.git", rev = "b586e94
 gpui_platform = { git = "https://github.com/cradiy/gpui-fusion.git", rev = "b586e94ae933dc1fd19901258b3dfd43de047bf3" }
 
 log = "0.4"
+image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
 symphonia = { version = "0.6.0", default-features = false, features = [
   "all-codecs",
   "all-meta",
@@ -54,6 +55,9 @@ windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Graphics_Dwm",
   "Win32_Storage_FileSystem",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Registry",
+  "Win32_UI_WindowsAndMessaging",
 ] }
 
 [profile.dev.package]

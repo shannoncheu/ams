@@ -3,7 +3,11 @@ mod music_client;
 pub(crate) mod pages;
 mod panel_resize;
 mod sidebar;
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+    time::Instant,
+};
 
 use gpui::{
     AnyWindowHandle, AppContext, Entity, EventEmitter, Image, Render, Task, Window, div,
@@ -115,6 +119,7 @@ pub struct MusicShell {
     playlists: Entity<PlaylistStore>,
     pub imports: Entity<ImportManager>,
     pub(crate) timeline_slider: Entity<SliderState>,
+    pub(crate) volume_slider: Entity<SliderState>,
     pub search_input: Entity<TextInput>,
     pub songs_search_input: Entity<TextInput>,
     pub playlist_search_input: Entity<TextInput>,
@@ -123,6 +128,7 @@ pub struct MusicShell {
     pub mini_window: Option<AnyWindowHandle>,
     pub queue_artwork: HashMap<String, Arc<Image>>,
     pub queue_artwork_tasks: HashMap<String, Task<()>>,
+    pub queue_artwork_failed: HashSet<String>,
     pub queue_ui: queue_panel::QueueUiState,
     pub playback_panel: PlaybackPanel,
     pub now_playing_lyrics: bool,
@@ -270,7 +276,26 @@ impl MusicShell {
         .detach();
 
         let timeline_slider = cx.new(|cx| SliderState::new(0., 0.0..=1.0, cx).disabled(true));
+        let volume_slider = cx.new(|cx| SliderState::new(1., 0.0..=1.0, cx).step(0.01));
         let playback = cx.new(PlaybackController::new);
+        let volume_for_playback = volume_slider.clone();
+        cx.observe(&playback, move |_, playback, cx| {
+            let snapshot = &playback.read(cx).snapshot;
+            let volume = if snapshot.muted { 0. } else { snapshot.volume };
+            volume_for_playback.update(cx, |slider, cx| {
+                if !slider.is_dragging() {
+                    slider.set_value(volume, cx);
+                }
+            });
+        })
+        .detach();
+        cx.subscribe(&volume_slider, |app, _, event: &SliderEvent, cx| {
+            let (SliderEvent::Changing(value) | SliderEvent::Changed(value)) = event;
+            app.playback
+                .update(cx, |playback, cx| playback.set_volume(*value, cx));
+            cx.notify();
+        })
+        .detach();
         cx.subscribe(&imports, |app, _, event: &ImportEvent, cx| {
             if let ImportEvent::LyricsChanged { track_id, lyrics } = event {
                 app.playback.update(cx, |playback, cx| {
@@ -325,10 +350,12 @@ impl MusicShell {
             playlists,
             imports,
             timeline_slider,
-            now_playing: false,
+            volume_slider,
+            now_playing: true,
             mini_window: None,
             queue_artwork: HashMap::new(),
             queue_artwork_tasks: HashMap::new(),
+            queue_artwork_failed: HashSet::new(),
             queue_ui: queue_panel::QueueUiState::default(),
             playback_panel: PlaybackPanel::None,
             effects_viewer: None,
@@ -481,7 +508,11 @@ impl Render for MusicShell {
         } else {
             0.
         };
-        if show_inline_lyrics {
+        if show_inline_lyrics
+            && self
+                .lyrics_panel
+                .is_animating(&self.playback.read(cx).snapshot, false)
+        {
             window.request_animation_frame();
         }
         let compact = width < px(layout::COMPACT_TOP_BAR_BELOW);
@@ -495,7 +526,7 @@ impl Render for MusicShell {
             .when(cfg!(not(target_os = "windows")), |root| {
                 root.rounded(px(22.))
             })
-            .bg(rgb(0x20222e))
+            .bg(rgb(0x20252b))
             .border_1()
             .border_color(rgba(0x00000045))
             .shadow(vec![
@@ -526,7 +557,7 @@ impl Render for MusicShell {
                             .h_full()
                             .flex()
                             .flex_col()
-                            .bg(rgb(0x20222d))
+                            .bg(rgb(0x20252b))
                             .child(top_bar::render(self, compact, controls_inset, cx))
                             .child(self.content_shell.clone())
                             .child(

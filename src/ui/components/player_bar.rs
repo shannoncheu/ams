@@ -31,7 +31,7 @@ fn mode_button(id: &'static str, icon: GpuiIcons, active: bool) -> Stateful<Div>
         .justify_center()
         .rounded_full()
         .cursor_pointer()
-        .when(active, |button| button.bg(rgba(0xfa355814)))
+        .when(active, |button| button.bg(rgba(0x91c8d514)))
         .hover(|style| style.bg(rgba(0xffffff0f)))
         .child(svg().path(icon).size_5().text_color(if active {
             rgb(ACCENT)
@@ -400,7 +400,7 @@ pub fn render(
                         .cursor_pointer()
                         .when(
                             app.playback_panel == PlaybackPanel::InlineLyrics,
-                            |button| button.bg(rgba(0xfa355814)),
+                            |button| button.bg(rgba(0x91c8d514)),
                         )
                         .hover(|button| button.bg(rgba(0xffffff0f)))
                         .on_click(cx.listener(|app, _, _, cx| {
@@ -448,12 +448,14 @@ pub fn render(
 pub fn render_now_playing(
     app: &mut MusicShell,
     cx: &mut gpui::Context<MusicShell>,
-    active_color: Rgba,
+    phase: f32,
+    scale: f32,
 ) -> AnyElement {
     let playback = app.playback.read(cx);
     let playing = playback.snapshot.is_playing();
     let shuffle = playback.queue.shuffle;
     let repeat = playback.queue.repeat;
+    let muted = playback.snapshot.muted;
     let can_previous = playback.can_skip_previous();
     let can_next = playback.can_skip_next();
     let timeline = playback.snapshot.timeline;
@@ -462,146 +464,258 @@ pub fn render_now_playing(
         || timeline.position(),
         |_| Duration::from_secs_f64(app.timeline_slider.read(cx).value()),
     );
+    let progress = duration
+        .filter(|d| !d.is_zero())
+        .map_or(0., |d| (position.as_secs_f64() / d.as_secs_f64()) as f32);
     let _ = playback;
-    let elapsed = format_time(position);
-    let remaining = duration
-        .map(|duration| format!("−{}", format_time(duration.saturating_sub(position))))
-        .unwrap_or_else(|| "−:--".to_owned());
-
+    let button = |id, icon: SharedString, label, enabled, active| {
+        reference_button(id, icon, label, enabled, active, scale)
+    };
     div()
         .w_full()
         .flex()
         .flex_col()
         .child(
-            Slider::new(&app.timeline_slider)
-                .label("Playback position")
-                .cursor(CursorStyle::PointingHand)
-                .appearance(
-                    SliderAppearance::default()
-                        .active_track(rgba(0xffffffe0).into())
-                        .h(px(4.))
-                        .rounded_full()
-                        .bg(rgba(0xffffff4c)),
-                )
-                .thumb_visibility(SliderThumbVisibility::Never)
-                .value_tooltip(SliderTooltipPlacement::Top, |value, _, _| {
-                    timeline_tooltip(value)
-                })
-                .h(px(16.)),
-        )
-        .child(
             div()
-                .mt(px(-1.))
-                .flex()
-                .justify_between()
-                .text_size(px(9.))
-                .font_weight(FontWeight::MEDIUM)
-                .text_color(rgba(0xffffffe0))
-                .child(elapsed)
-                .child(remaining),
-        )
-        .child(
-            div()
-                .mt(px(9.))
-                .h(px(66.))
+                .h(px(24. * scale))
                 .flex()
                 .items_center()
                 .justify_between()
                 .child(
-                    now_playing_icon_button(
+                    button(
                         "now-playing-shuffle",
-                        GpuiIcons::LucideShuffle,
-                        23.,
+                        GpuiIcons::LucideShuffle.into(),
+                        "Shuffle",
                         true,
                         shuffle,
-                        Some(active_color),
                     )
                     .on_click(cx.listener(|app, _, _, cx| {
                         app.playback
-                            .update(cx, |playback, cx| playback.toggle_shuffle(cx));
+                            .update(cx, |player, cx| player.toggle_shuffle(cx));
                     })),
                 )
                 .child(
-                    now_playing_icon_button(
+                    button(
                         "now-playing-skip-back",
-                        RomusIcons::MusicPrevious,
-                        31.,
+                        RomusIcons::MusicPrevious.into(),
+                        "Previous track",
                         can_previous,
                         false,
-                        Some(active_color),
                     )
                     .on_click(cx.listener(|app, _, _, cx| {
                         app.playback
-                            .update(cx, |playback, cx| playback.skip_previous(cx));
+                            .update(cx, |player, cx| player.skip_previous(cx));
                     })),
                 )
                 .child(
-                    div()
-                        .id("now-playing-play-pause")
-                        .size(px(60.))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .rounded_full()
-                        .cursor_pointer()
-                        .bg(rgba(0xffffff14))
-                        .hover(|style| style.bg(rgba(0xffffff24)))
-                        .on_click(cx.listener(|app, _, _, cx| {
-                            app.toggle_playback(cx);
-                        }))
-                        .child(
-                            svg()
-                                .path(if playing {
-                                    RomusIcons::MusicPause
-                                } else {
-                                    RomusIcons::MusicPlay
-                                })
-                                .size(px(36.))
-                                .text_color(rgba(0xffffffff)),
-                        ),
+                    button(
+                        "now-playing-play-pause",
+                        if playing {
+                            RomusIcons::MusicPause.into()
+                        } else {
+                            RomusIcons::MusicPlay.into()
+                        },
+                        if playing { "Pause" } else { "Play" },
+                        can_previous,
+                        playing,
+                    )
+                    .on_click(cx.listener(|app, _, _, cx| app.toggle_playback(cx))),
                 )
                 .child(
-                    now_playing_icon_button(
+                    button(
                         "now-playing-skip-forward",
-                        RomusIcons::MusicNext,
-                        31.,
+                        RomusIcons::MusicNext.into(),
+                        "Next track",
                         can_next,
                         false,
-                        Some(active_color),
                     )
                     .on_click(cx.listener(|app, _, _, cx| {
-                        app.playback
-                            .update(cx, |playback, cx| playback.skip_next(cx));
+                        app.playback.update(cx, |player, cx| player.skip_next(cx));
                     })),
                 )
                 .child(
-                    now_playing_icon_button(
+                    button(
                         "now-playing-repeat",
-                        GpuiIcons::LucideRepeat,
-                        23.,
+                        GpuiIcons::LucideRepeat.into(),
+                        "Repeat",
                         true,
                         repeat != RepeatMode::Off,
-                        Some(active_color),
                     )
                     .on_click(cx.listener(|app, _, _, cx| {
                         app.playback
-                            .update(cx, |playback, cx| playback.cycle_repeat(cx));
+                            .update(cx, |player, cx| player.cycle_repeat(cx));
                     }))
                     .when(repeat == RepeatMode::One, |button| {
                         button.child(
                             div()
                                 .absolute()
-                                .bottom(px(5.))
-                                .right(px(7.))
-                                .text_size(px(9.))
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(active_color)
+                                .bottom_0()
+                                .right_0()
+                                .text_size(px(6. * scale))
                                 .child("1"),
                         )
                     }),
+                )
+                .child(div().w(px(8. * scale)))
+                .child(
+                    button(
+                        "reference-mini",
+                        GpuiIcons::LucidePictureInPicture2.into(),
+                        "Mini player",
+                        true,
+                        false,
+                    )
+                    .on_click(cx.listener(|app, _, window, cx| app.enter_mini_player(window, cx))),
+                )
+                .child(
+                    button(
+                        "reference-lyrics",
+                        GpuiIcons::LucideMicVocal.into(),
+                        "Lyrics",
+                        true,
+                        app.now_playing_lyrics,
+                    )
+                    .on_click(cx.listener(|app, _, _, cx| {
+                        app.now_playing_lyrics = true;
+                        cx.notify();
+                    })),
+                )
+                .child(
+                    button(
+                        "reference-queue",
+                        GpuiIcons::LucideListMusic.into(),
+                        "Queue",
+                        true,
+                        !app.now_playing_lyrics,
+                    )
+                    .on_click(cx.listener(|app, _, _, cx| {
+                        app.now_playing_lyrics = false;
+                        cx.notify();
+                    })),
+                )
+                .child(
+                    div()
+                        .relative()
+                        .group("reference-volume")
+                        .child(
+                            button(
+                                "reference-volume",
+                                if muted {
+                                    GpuiIcons::LucideVolumeX.into()
+                                } else {
+                                    GpuiIcons::LucideVolume2.into()
+                                },
+                                "Mute or adjust volume",
+                                true,
+                                false,
+                            )
+                            .on_click(cx.listener(|app, _, _, cx| {
+                                app.playback
+                                    .update(cx, |player, cx| player.toggle_muted(cx));
+                            })),
+                        )
+                        .child(
+                            div()
+                                .absolute()
+                                .bottom_full()
+                                .right_0()
+                                .w(px(100. * scale))
+                                .p(px(8. * scale))
+                                .rounded(px(6. * scale))
+                                .bg(rgba(0x303840fa))
+                                .invisible()
+                                .group_hover("reference-volume", |popup| popup.visible())
+                                .child(
+                                    Slider::new(&app.volume_slider)
+                                        .label("Volume")
+                                        .appearance(
+                                            SliderAppearance::default()
+                                                .active_track(rgba(0x91c8d5ff).into())
+                                                .h(px(3. * scale))
+                                                .bg(rgba(0xffffff26)),
+                                        )
+                                        .thumb_visibility(SliderThumbVisibility::Hover)
+                                        .h(px(18. * scale)),
+                                ),
+                        ),
+                ),
+        )
+        .child(
+            div()
+                .mt(px(4. * scale))
+                .flex()
+                .items_center()
+                .gap(px(7. * scale))
+                .text_size(px(8. * scale))
+                .font_weight(FontWeight::MEDIUM)
+                .text_color(rgba(0xaab4bfff))
+                .child(div().w(px(22. * scale)).child(format_time(position)))
+                .child(
+                    div().flex_1().min_w_0().child(
+                        Slider::new(&app.timeline_slider)
+                            .label("Playback position")
+                            .cursor(CursorStyle::PointingHand)
+                            .appearance(
+                                SliderAppearance::default()
+                                    .active_track(rgba(0x00000000).into())
+                                    .h(px(12. * scale))
+                                    .bg(rgba(0x00000000)),
+                            )
+                            .track_content(super::wave_progress::track(progress, phase, scale))
+                            .thumb_visibility(SliderThumbVisibility::Never)
+                            .value_tooltip(SliderTooltipPlacement::Top, |value, _, _| {
+                                timeline_tooltip(value)
+                            })
+                            .border_0()
+                            .h(px(20. * scale)),
+                    ),
+                )
+                .child(
+                    div().w(px(22. * scale)).text_right().child(
+                        duration
+                            .map(format_time)
+                            .unwrap_or_else(|| "--:--".to_owned()),
+                    ),
                 ),
         )
         .into_any_element()
+}
+
+fn reference_button(
+    id: &'static str,
+    icon: SharedString,
+    label: &'static str,
+    enabled: bool,
+    active: bool,
+    scale: f32,
+) -> Stateful<Div> {
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_disabled(!enabled)
+        .aria_label(label)
+        .relative()
+        .size(px(21. * scale))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded_full()
+        .when(enabled, |button| {
+            button
+                .cursor_pointer()
+                .hover(|style| style.bg(rgba(0xffffff14)))
+        })
+        .when(!enabled, |button| button.opacity(0.3))
+        .child(svg().path(icon).size(px(12. * scale)).text_color(
+            if id == "now-playing-play-pause" && active {
+                rgba(0x91c8d5ff)
+            } else if active {
+                rgba(0x91c8d5ff)
+            } else {
+                rgba(0xf2f4f7e0)
+            },
+        ))
 }
 
 pub fn now_playing_icon_button(
@@ -629,7 +743,7 @@ pub fn now_playing_icon_button(
         .when(!active, |button| button.opacity(0.58))
         .when(active, |button| button.bg(rgba(0xffffff18)))
         .child(svg().path(icon).size(px(icon_size)).text_color(if active {
-            active_color.unwrap_or(rgba(ACCENT))
+            active_color.unwrap_or(rgb(ACCENT))
         } else if enabled {
             rgba(0xffffffff)
         } else {
