@@ -70,6 +70,28 @@ jobs:
       - name: Package EXE and Portable ZIP
         shell: pwsh
         run: ./scripts/package-windows.ps1
+      - name: Verify WebView2 login window lifecycle without an account
+        shell: pwsh
+        run: |
+          $runtime = Get-ChildItem "${env:ProgramFiles(x86)}/Microsoft/EdgeWebView/Application/*/msedgewebview2.exe", "$env:ProgramFiles/Microsoft/EdgeWebView/Application/*/msedgewebview2.exe" -ErrorAction SilentlyContinue
+          if (-not $runtime) {
+            $bootstrap = Join-Path $env:RUNNER_TEMP 'WebView2Bootstrapper.exe'
+            Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $bootstrap
+            $install = Start-Process $bootstrap -ArgumentList '/silent', '/install' -Wait -PassThru
+            if ($install.ExitCode -notin 0,3010) { throw "WebView2 install failed: $($install.ExitCode)" }
+          }
+          $helper = Start-Process ./dist/GPUI-Music-Player.exe -ArgumentList '--google-login-helper-smoke' -PassThru
+          $seen = $false
+          $deadline = (Get-Date).AddSeconds(60)
+          while (-not $helper.HasExited -and (Get-Date) -lt $deadline) {
+            $helper.Refresh()
+            if ($helper.MainWindowHandle -ne [IntPtr]::Zero) { $seen = $true }
+            Start-Sleep -Milliseconds 200
+          }
+          if (-not $helper.HasExited) { Stop-Process -Id $helper.Id; throw 'Login helper timeout' }
+          $helper.WaitForExit()
+          @{ nativeLoginWindowObserved = $seen; exitCode = $helper.ExitCode; realAccountTested = $false } | ConvertTo-Json | Set-Content dist/login-window-smoke.json
+          if (-not $seen -or $helper.ExitCode -ne 2) { throw 'Login window open/cancel/cleanup failed' }
       - name: Test per-user installation and uninstall
         shell: pwsh
         run: |
@@ -103,6 +125,7 @@ jobs:
             dist/THIRD_PARTY_NOTICES.txt
             dist/runtime-dependencies.json
             dist/windows-smoke.json
+            dist/login-window-smoke.json
           if-no-files-found: error
 
   publish:

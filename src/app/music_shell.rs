@@ -121,6 +121,8 @@ pub struct MusicShell {
     pub(crate) timeline_slider: Entity<SliderState>,
     pub(crate) volume_slider: Entity<SliderState>,
     pub(crate) volume_open: bool,
+    pub(crate) youtube_visible: bool,
+    pub(crate) youtube: crate::services::youtube::YoutubeState,
     pub search_input: Entity<TextInput>,
     pub songs_search_input: Entity<TextInput>,
     pub playlist_search_input: Entity<TextInput>,
@@ -262,7 +264,13 @@ impl MusicShell {
         .detach();
 
         cx.subscribe(&sidebar, |app, _, event: &SidebarEvent, cx| match event {
+            SidebarEvent::Youtube => {
+                app.youtube_visible = true;
+                app.youtube_request("restore", cx);
+                cx.notify();
+            }
             SidebarEvent::Select(page) => {
+                app.youtube_visible = false;
                 app.navigation.page = page.clone();
                 if matches!(page, Page::PlayLists(crate::domain::PlayList::Custom(_))) {
                     app.playlist_search_input
@@ -353,6 +361,8 @@ impl MusicShell {
             timeline_slider,
             volume_slider,
             volume_open: false,
+            youtube_visible: false,
+            youtube: Default::default(),
             now_playing: true,
             mini_window: None,
             queue_artwork: HashMap::new(),
@@ -386,6 +396,41 @@ impl MusicShell {
         self.playback
             .update(cx, |playback, cx| playback.play_track(track, cx));
         cx.notify();
+    }
+
+    pub(crate) fn youtube_request(&mut self, action: &'static str, cx: &mut gpui::Context<Self>) {
+        if self.youtube.busy {
+            return;
+        }
+        self.youtube.busy = true;
+        self.youtube.message = "正在处理…".into();
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move { crate::services::youtube::perform(action) })
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                this.youtube.busy = false;
+                match result {
+                    Ok(rows) => {
+                        this.youtube.rows = rows;
+                        this.youtube.message = if action == "logout" {
+                            "已退出，已清除保存的会话。"
+                        } else {
+                            "请求已完成。在线音频播放未接通。"
+                        }
+                        .into();
+                    }
+                    Err(message) => {
+                        this.youtube.message = message.into();
+                        this.youtube.rows.clear();
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
     }
 
     pub fn return_to_library(&mut self, cx: &mut gpui::Context<Self>) {
@@ -565,7 +610,12 @@ impl Render for MusicShell {
                             .flex_col()
                             .bg(rgb(0x20252b))
                             .child(top_bar::render(self, compact, controls_inset, cx))
-                            .child(self.content_shell.clone())
+                            .child(if self.youtube_visible {
+                                crate::ui::components::youtube_panel::render(self, cx)
+                                    .into_any_element()
+                            } else {
+                                self.content_shell.clone().into_any_element()
+                            })
                             .child(
                                 div()
                                     .absolute()

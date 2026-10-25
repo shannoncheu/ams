@@ -23,3 +23,5 @@ pub fn profile_api(cx: &gpui::App) -> Result<ProfileApi, ApiError> {
     let _ = cx;
     Ok(ProfileApi)
 }
+
+pub mod youtube;

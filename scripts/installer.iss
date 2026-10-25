@@ -1,7 +1,7 @@
 [Setup]
 AppId=AMS.GPUI.MusicPlayer
 AppName=AMS Music Player
-AppVersion=0.1.0-preview.2
+AppVersion=0.1.0-preview.3
 DefaultDirName={localappdata}\Programs\AMS Music Player
 DefaultGroupName=AMS Music Player
 PrivilegesRequired=lowest

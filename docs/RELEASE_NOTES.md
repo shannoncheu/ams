@@ -1,16 +1,19 @@
-Native Rust/GPUI music player preview with a slate/ice-blue palette, bundled Noto
-Sans SC, always-visible transparent caption icons, readable lyric weights and a
-portable data directory. Existing audio and lyric engines are retained.
+Experimental Windows-only WebView2 Google login helper with a pure GPUI sidebar/page.
+Session cookies are saved in Windows Credential Manager, never stdout/config/logs.
+Logout clears saved sessions; cancelled/failed login reports an error. The login
+profile is temporary and removed on close. Google may reject embedded sign-in;
+no bypass, user-agent disguise, passwords or audio stream extraction is used.
 
-Download the complete Portable ZIP for portable storage; the ordinary Windows ZIP
-includes licenses and any required DLLs. Fonts/icons/shaders are embedded. Verify
-SHA256SUMS.txt. Builds are unsigned and require Windows x64 with a usable graphics
-driver. No administrator rights or SDK is required to run the packaged application.
+Home/library/likes/history use unofficial endpoints and display basic text
+metadata. No real Google account has verified login, session restoration or
+private library access. Search, cover grids, playlist mutations, and online audio
+remain unavailable. Linux does not run this Windows helper. WebView2 Runtime is
+required for login, while local playback remains independent of it.
 
-Windows artifacts are compiled on GitHub Actions windows-2022 (Server 2022).
-They are NOT a Windows 10 physical-machine compatibility certification. Real
-Win10 playback, Acrylic/DPI/Snap/taskbar behavior, font appearance and CPU/GPU/RAM
-remain to be measured. Linux virtual audio retests had intermittent ALSA/Pulse
-I/O errors. YouTube login/online metadata/playback are not implemented.
+Also includes slate sidebar/upload cleanup, explicit volume popup, library return,
+native restored-frame removal, opaque default backdrop and per-user Setup/Portable.
+Windows Server 2022 CI is not a Windows 10 physical compatibility test. The Linux
+Wayland mini/main remap issue remains open. Builds are unsigned previews.
 
-Windows 10 baseline: 1903 or newer (22H2 recommended), x64. The executable imports the system ICU library; earlier Windows 10 builds are not supported by this preview. Physical-machine validation remains pending.
+Download MusicPlayer-Setup-x64.exe or the complete MusicPlayer-Portable-x64.zip.
+All dependency notices and covered source ship in the bundles. Verify SHA256SUMS.

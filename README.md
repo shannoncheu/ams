@@ -32,11 +32,16 @@ before treating them as Windows screenshots.
 - Mini player shares the original playback entity and restores the main window.
 - Portable ZIP keeps configuration, state, logs and artwork cache beside the EXE.
 
-YouTube Music remains a planned source. The `MusicProvider` interface and local
-adapter exist, but Google login, live YouTube metadata and remote playlist calls
-are **not implemented**. There is no compliant general official native YouTube
-Music audio API for this UI. No stream extraction, cookies or DRM bypass is used.
-See [provider boundaries](docs/PROVIDERS.md).
+YouTube Music has an experimental Windows-only WebView2 login helper. The main
+UI remains GPUI. Temporary browser profiles are removed after login/cancel;
+session cookies are stored only in Windows Credential Manager. No passwords are
+collected by the player. The sidebar includes login, logout, home/library/likes/
+history requests through unofficial endpoints; these may change or be refused.
+**No real Google account has validated login or private library access.** Search,
+artwork cards, playlist editing and native online audio remain unavailable.
+Google may reject embedded sign-in; no user-agent disguise or bypass is used.
+Install Microsoft Edge WebView2 Runtime to use the login helper.
+See [provider boundaries and license review](docs/PROVIDERS.md).
 
 ## Download and launch
 

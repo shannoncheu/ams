@@ -1,49 +1,59 @@
-# Music sources
+# Music sources and experimental Windows login
 
-`services::providers::MusicProvider` is an object-safe asynchronous catalog and
-playback-resolution interface. Track and playlist IDs include their provider
-namespace. It reports capabilities and typed failures; metadata access alone
-does not authorize playback.
+The existing MusicProvider interface and local adapter remain unchanged. The
+experimental YouTube session/catalog service is isolated from the audio engine;
+its metadata responses never create playable local queue entries.
 
-`LocalMusicProvider` adapts the existing `LocalStore`: search/library reads,
-track metadata, lyrics, local playback paths, playlist listing and creation.
-Filesystem and metadata operations run on Tokio's blocking pool. The existing
-playback UI still uses its original services; migrating those call sites is a
-separate step after local behavior is verified. Existing files and IDs are
-unchanged. Local search still scans the original catalog before pagination; this
-adapter does not yet provide an indexed large-library implementation.
+The previous desktop OAuth proposal has been removed. No Client ID/Secret,
+loopback callback, OAuth dependency or token state was implemented in this app,
+so existing local-library authentication must not be removed.
 
-Provider cursors are opaque and source-specific. Local cursors are validated
-before catalog work. YouTube page tokens must remain YouTube cursors rather than
-being converted into local offsets. Unsupported operations return errors and do
-not update playback state.
+## Independent WebView2 login helper
 
-## Official YouTube integration boundary
+Only the Windows login child process uses Wry/Tao/WebView2; the main player uses
+GPUI. It opens accounts.google.com. User passwords stay in Google's page. The
+helper reads its own resulting youtube.com session cookies and saves them in
+Windows Credential Manager, using bounded chunks for Credential Manager limits.
+Credentials never travel through stdout, command arguments, logs, Git or artifact
+files. Login has no password input in GPUI. Close cancels; logout clears vault
+entries. Temporary WebView profiles are removed after window/context destruction,
+with a bounded cleanup retry. A cleanup failure returns a failed login result.
 
-The next source adapter will use the YouTube Data API for video/channel/playlist
-search and available metadata. Authorized playlist reading/writing requires a
-configured Google desktop OAuth client, the system browser, a loopback callback,
-PKCE/state checks and appropriately scoped consent. Tokens must be protected
-with Windows Credential Manager or DPAPI, separately from the current local
-session placeholders. Data refresh/deletion, revocation and quota errors need
-explicit handling.
+Google can reject embedded browsers. That failure must not be bypassed by user
+agent disguise or copied accounts/cookies. WebView2 Runtime is required separately;
+local playback does not depend on it. Windows CI tests helper open/close/cancel,
+not a real Google account. Successful credential storage is not proof that the
+server accepted a catalog request.
 
-YouTube playlists and video search are not a complete YouTube Music catalog or
-personal music library API. Channel names must not be silently presented as
-verified recording artists. Missing album, duration or lyric information must
-remain unavailable until obtained from an authorized source.
+Home/library/likes/history use unofficial authenticated browse requests. Requests
+run off the GPUI thread, have timeouts, bounded displayed rows and generic errors
+that omit response bodies/credentials. Expired/refused sessions require login
+again. The current UI renders returned text metadata only: no cover grid, search,
+playlist mutations, complete pagination, or online audio playback is implemented.
+No real account has verified these endpoints. Do not claim private library access
+or login success until an actual account test passes.
 
-There is no general official API supplying YouTube Music audio to this GPUI/CPAL
-engine. This milestone contains **no YouTube playback implementation**, account
-login or live API test. A future metadata-only adapter must return
-`PlaybackUnavailable` for native playback; opening an official browser link is a
-separate external action. No extractor, cookie authentication, internal API,
-DRM workaround or WebView is used.
+## ytm-rs review and licensing
+
+Reviewed https://github.com/grapedjuice/ytm-rs : login.rs, vault.rs, webmusic.rs,
+ytmapi.rs, backend.rs, Cargo.toml and LICENSE. Its GPL-3.0 code uses a
+separate Wry/Tao login process, web session cookies, a credential vault and
+unofficial APIs. Some playback paths call extraction tools; these are not adopted.
+
+MIT code can be combined with GPL-3.0 subject to GPL obligations on the combined
+work, retaining MIT notices. It cannot simply copy GPL modules and distribute the
+combined application as MIT-only. This project does not copy, link or redistribute
+ytm-rs source. Its helper is independently written using the public
+Wry/Tao/keyring APIs. Those dependencies have their own MIT/Apache notices,
+collected into distribution licenses. Architecture ideas and API usage do not
+require copying the GPL implementation. No upstream assets are reused.
 
 References:
-
-- https://developers.google.com/identity/protocols/oauth2/native-app
-- https://developers.google.com/youtube/v3/docs/search/list
-- https://developers.google.com/youtube/v3/docs/playlists/list
+- https://github.com/grapedjuice/ytm-rs
+- https://docs.rs/wry/0.57.0/wry/
+- https://docs.rs/tao/0.37.1/tao/
+- https://docs.rs/keyring/3.6.3/keyring/
 - https://developers.google.com/youtube/terms/developer-policies
-- https://developers.google.com/youtube/iframe_api_reference
+
+There is no general official native YouTube Music audio API for this CPAL player.
+No DRM bypass, stream extraction or subscription impersonation is implemented.

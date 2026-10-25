@@ -751,6 +751,7 @@ impl Sidebar {
 }
 
 pub enum SidebarEvent {
+    Youtube,
     Select(Page),
 }
 
@@ -817,6 +818,19 @@ impl gpui::Render for Sidebar {
                         self.selected_page == Page::Home,
                         cx,
                     ))
+                    .child(
+                        div()
+                            .id("nav-youtube")
+                            .role(gpui::Role::Button)
+                            .aria_label("YouTube Music")
+                            .mx(px(8.))
+                            .p(px(12.))
+                            .rounded(px(12.))
+                            .cursor_pointer()
+                            .hover(|row| row.bg(rgba(0x91c8d518)))
+                            .child("YouTube Music")
+                            .on_click(cx.listener(|_, _, _, cx| cx.emit(SidebarEvent::Youtube))),
+                    )
                     .child(nav_section("Library"))
                     .child(nav_item(
                         "nav-artists",

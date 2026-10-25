@@ -33,6 +33,12 @@ fn titlebar() -> Option<TitlebarOptions> {
 }
 
 fn main() -> ExitCode {
+    #[cfg(target_os = "windows")]
+    if std::env::args_os()
+        .any(|arg| arg == "--google-login-helper" || arg == "--google-login-helper-smoke")
+    {
+        return ExitCode::from(gpui_apple_music_demo::services::youtube::login_helper() as u8);
+    }
     #[cfg(target_os = "linux")]
     configure_audio_identity();
     tokio::runtime::Builder::new_multi_thread()
