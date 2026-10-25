@@ -99,10 +99,10 @@ impl Render for MiniPlayer {
         } else {
             snapshot.track.title.clone()
         };
-        let title = if can_previous && !snapshot.track.artist.is_empty() {
-            SharedString::from(format!("{title} · {}", snapshot.track.artist))
+        let artist = if can_previous && !snapshot.track.artist.is_empty() {
+            snapshot.track.artist.clone()
         } else {
-            title
+            SharedString::default()
         };
         let lyric = current_lyric_element(
             &snapshot,
@@ -154,7 +154,7 @@ impl Render for MiniPlayer {
                     .items_center()
                     .gap(px(12.))
                     .child(self.render_cover(artwork, cx))
-                    .child(self.render_meta(title, lyric, elapsed, remaining))
+                    .child(self.render_meta(title, artist, lyric, elapsed, remaining))
                     .child(self.render_transport(playing, can_previous, can_next, cx, repeat)),
             )
     }
@@ -208,6 +208,7 @@ impl MiniPlayer {
     fn render_meta(
         &self,
         title: SharedString,
+        artist: SharedString,
         lyric: AnyElement,
         elapsed: String,
         remaining: String,
@@ -225,11 +226,31 @@ impl MiniPlayer {
             .child(
                 div()
                     .w_full()
-                    .truncate()
-                    .text_size(px(11.5))
-                    .font_weight(FontWeight::MEDIUM)
+                    .min_w_0()
+                    .flex()
+                    .items_center()
+                    .gap(px(4.))
                     .window_control_area(WindowControlArea::Drag)
-                    .child(title),
+                    .child(
+                        div()
+                            .min_w_0()
+                            .flex_1()
+                            .truncate()
+                            .text_size(px(11.5))
+                            .font_weight(FontWeight::MEDIUM)
+                            .child(title),
+                    )
+                    .when(!artist.is_empty(), |row| {
+                        row.child(
+                            div()
+                                .max_w(relative(0.5))
+                                .truncate()
+                                .text_size(px(10.5))
+                                .font_weight(FontWeight::NORMAL)
+                                .text_color(rgba(0xaab4bfff))
+                                .child(format!("· {artist}")),
+                        )
+                    }),
             )
             .child(
                 div()

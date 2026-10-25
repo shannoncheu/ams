@@ -110,3 +110,5 @@ published VCS commit or [version-specific source clarifications](licenses/CLARIF
 PixelPlayer is only a visual inspiration for the independently written sine-wave
 track. No PixelPlayer source or assets are redistributed. Original upstream
 documentation is preserved in [UPSTREAM_README.md](docs/UPSTREAM_README.md).
+
+Windows 10 baseline: 1903 or newer (22H2 recommended), x64. The executable imports the system ICU library; earlier Windows 10 builds are not supported by this preview. Physical-machine validation remains pending.

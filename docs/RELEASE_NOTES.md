@@ -12,3 +12,5 @@ They are NOT a Windows 10 physical-machine compatibility certification. Real
 Win10 playback, Acrylic/DPI/Snap/taskbar behavior, font appearance and CPU/GPU/RAM
 remain to be measured. Linux virtual audio retests had intermittent ALSA/Pulse
 I/O errors. YouTube login/online metadata/playback are not implemented.
+
+Windows 10 baseline: 1903 or newer (22H2 recommended), x64. The executable imports the system ICU library; earlier Windows 10 builds are not supported by this preview. Physical-machine validation remains pending.

@@ -43,7 +43,7 @@ while ($queue.Count) {
     }
 }
 Copy-Item LICENSE $bundle
-Copy-Item README.md (Join-Path $bundle 'README.md')
+Copy-Item docs/DISTRIBUTION_README.md (Join-Path $bundle 'README.md')
 Copy-Item docs/PORTABLE.md (Join-Path $bundle 'START-HERE.md')
 Copy-Item dist/THIRD_PARTY_NOTICES.txt $bundle
 New-Item -ItemType Directory (Join-Path $bundle 'licenses') | Out-Null

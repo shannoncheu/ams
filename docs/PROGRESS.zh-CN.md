@@ -20,7 +20,7 @@
 | Linux cargo test --locked | 22 项单元测试与 1 项独立目录来源集成测试通过 |
 | rustfmt / git diff --check | 通过 |
 | PowerShell 脚本 AST 解析 | 通过；不代表已在 Windows 执行 |
-| Windows 工作流 YAML | 已解析检查，执行结果以真实 Actions 记录为准 |
+| Windows Server 2022 | [首轮真实 Actions](https://github.com/shannoncheu/ams/actions/runs/40162318865) 检查、测试、Release 编译及 Portable 窗口/配置/退出检查通过；最终包将纳入后续许可证补全 |
 | Wayland / 软件 Vulkan | 原生 GPUI 实际启动、中文字体、主窗/迷你窗切换、位置保持已检查 |
 | Linux Portable 路径 | 独立 EXE 目录加标记启动 --smoke-test，正常退出，在 data/config 创建配置 |
 | 许可证收集 | 已从锁定的 Windows 依赖图收集 491 个包的声明与可用许可文件，并包含字体 OFL |
@@ -39,3 +39,5 @@ Windows Server 构建或启动成功也不等于 Windows 10 兼容性通过。�
 Linux 虚拟音频曾成功录到非零 PCM，但复测间歇出现 ALSA/Pulse I/O 错误；原因未定，音频稳定性未验收。
 
 YouTube Music 仅有来源接口和边界设计，Google 登录、在线元数据、远端歌单及原生播放均未接通。迷你展开/收起动画、可切换置顶、完整背景模式及大型媒体库索引仍待完善。发布为无签名预览，不作为正式稳定版。
+
+首轮 CI 启动工作集峰值为 172,625,920 字节（约 164.6 MiB），不是本地播放常驻内存；CPU/GPU 尚未测量。导入表包含系统 icuuc.dll，因此保守要求 Windows 10 1903 或更新版本（建议 22H2），旧版本不在当前支持声明内。
