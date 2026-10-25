@@ -1,0 +1,66 @@
+name: Publish verified Windows artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Windows x64 Release run
+        required: true
+        default: '40164212911'
+      source_sha:
+        description: Exact source commit built by that run
+        required: true
+        default: 'ffe4afa47e9df34009f3a394a899814800963230'
+      tag:
+        description: Preview release tag
+        required: true
+        default: 'v0.1.0-preview.1'
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN: ${{ inputs.run_id }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha }}
+      - name: Verify successful source build
+        run: |
+          gh run view "$SOURCE_RUN" --json conclusion,headSha,workflowName > build-metadata.json
+          python - <<'PY'
+          import json, os, re
+          m = json.load(open('build-metadata.json'))
+          assert m['conclusion'] == 'success', m
+          assert m['workflowName'] == 'Windows x64 Release', m
+          assert m['headSha'] == os.environ['SOURCE_SHA'], m
+          assert re.fullmatch(r'v[0-9A-Za-z._-]+', os.environ['RELEASE_TAG'])
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: gpui-music-windows-x64
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: release-assets
+      - name: Verify package hashes and publish preview
+        run: |
+          python - <<'PY'
+          import hashlib, pathlib
+          root = pathlib.Path('release-assets')
+          for line in (root / 'SHA256SUMS.txt').read_text().splitlines():
+              expected, name = line.split(None, 1)
+              assert pathlib.Path(name).name == name
+              assert hashlib.sha256((root / name).read_bytes()).hexdigest() == expected, name
+          PY
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release-assets/* --target "$SOURCE_SHA" --title "AMS $RELEASE_TAG — Windows x64" --notes-file docs/RELEASE_NOTES.md --prerelease
+          fi
